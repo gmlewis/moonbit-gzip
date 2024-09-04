@@ -18,7 +18,7 @@ pub let best_speed : CompressionLevel = 1
 pub let best_compression : CompressionLevel = 9
 
 pub trait IOWriter {
-  write(Self, Bytes) -> (Int, Error)
+  write(Self, Bytes) -> Result[Unit, Error]
 }
 
 /// Writes to a Writer are compressed and written to w.
@@ -67,4 +67,26 @@ pub fn Writer::new(
     size: 0U, // Uncompressed size (section 2.3.1)
     err: None,
   }
+}
+
+// write_bytes writes a length-prefixed byte slice to self.w.
+fn write_bytes(self : Writer, b : Bytes) -> Unit!GzipError {
+  if b.length() > 0xffff {
+    raise GzipError("gzip.Write: Extra data is too large")
+  }
+  le_put_uint16(self.buf, 0, b.length().reinterpret_as_uint())
+  let le_len = Bytes::from_array([self.buf[0], self.buf[1]])
+  match self.w.write(le_len) {
+    Ok(_) => ()
+    e => raise GzipError("write_bytes error: \{e}")
+  }
+  match self.w.write(b) {
+    Ok(_) => ()
+    e => raise GzipError("write_bytes error: \{e}")
+  }
+}
+
+fn le_put_uint16(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
+  b[offset] = (value & 0xff).to_byte()
+  b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
 }
