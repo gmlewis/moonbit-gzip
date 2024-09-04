@@ -90,3 +90,25 @@ fn le_put_uint16(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
   b[offset] = (value & 0xff).to_byte()
   b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
 }
+
+/// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
+/// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
+fn write_string(self : Writer, s : String) -> Unit!GzipError {
+  // GZIP stores Latin-1 strings; error if non-Latin-1; convert if non-ASCII.
+  for v in s {
+    if v == Char::from_int(0) || v > Char::from_int(0xff) {
+      raise GzipError("@gzip.write_string: non-Latin-1 header string")
+    }
+  }
+  let b = @base64.str2bytes(s)
+  match self.w.write(b) {
+    Ok(_) => ()
+    e => raise GzipError("write_bytes error: \{e}")
+  }
+  // GZIP strings are NUL-terminated.
+  let b = Bytes::make(1, b'\x00')
+  match self.w.write(b) {
+    Ok(_) => ()
+    e => raise GzipError("write_bytes error: \{e}")
+  }
+}
