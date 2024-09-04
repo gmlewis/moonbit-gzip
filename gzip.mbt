@@ -26,9 +26,9 @@ pub struct Writer {
   header : Header // written at first call to Write, Flush, or Close
   w : IOWriter
   level : CompressionLevel
-  wroteHeader : Bool
+  mut wrote_header : Bool
   closed : Bool
-  buf : FixedArray[Byte] // [10]byte
+  mut buf : FixedArray[Byte] // [10]byte
   compressor : IOWriter
   digest : UInt // CRC-32, IEEE polynomial (section 8)
   size : UInt // Uncompressed size (section 2.3.1)
@@ -59,7 +59,7 @@ pub fn Writer::new(
     header,
     w,
     level,
-    wroteHeader: false,
+    wrote_header: false,
     closed: false,
     buf,
     compressor: w,
@@ -111,4 +111,128 @@ fn write_string(self : Writer, s : String) -> Unit!GzipError {
     Ok(_) => ()
     e => raise GzipError("write_bytes error: \{e}")
   }
+}
+
+// write writes a compressed form of p to the underlying [io.Writer]. The
+// compressed bytes are not necessarily flushed until the [Writer] is closed.
+pub fn write(self: Writer, p : Bytes) -> Int!Error {
+	match self.err {
+    Some(e) => raise e
+    None => ()
+	}
+  let mut n = 0
+	// Write the GZIP header lazily.
+	if not(self.wrote_header) {
+		self.wrote_header = true
+    self.buf = FixedArray::make(10, b'\x00')
+    self.buf[0] = gzip_id1
+    self.buf[1] = gzip_id2
+    self.buf[2] = gzip_deflate
+		match self.header.extra {
+      Some(_) => self.buf[3] = b'\x04'
+      None => ()
+		}
+		if self.header.name != "" {
+			self.buf[3] = self.buf[3] | b'\x08'
+		}
+		if self.header.comment != "" {
+			self.buf[3] = self.buf[3] | b'\x10'
+		}
+		match self.mod_time {
+      Some(t) => {
+        let t = t.seconds.to_uint()
+			  // Section 2.3.1, the zero value for MTIME means that the
+			  // modified time is not set.
+			  le_put_uint32(self.buf, 4, t)
+      }
+      None => ()
+		}
+		if self.level == best_compression {
+			self.buf[8] = 2
+		} else if self.level == best_speed {
+			self.buf[8] = 4
+		}
+		self.buf[9] = self.os
+		_, self.err = self.w.Write(self.buf)
+		if self.err != nil {
+			return 0, self.err
+		}
+		if self.Extra != nil {
+			self.err = self.writeBytes(self.Extra)
+			if self.err != nil {
+				return 0, self.err
+			}
+		}
+		if self.Name != "" {
+			self.err = self.writeString(self.Name)
+			if self.err != nil {
+				return 0, self.err
+			}
+		}
+		if self.Comment != "" {
+			self.err = self.writeString(self.Comment)
+			if self.err != nil {
+				return 0, self.err
+			}
+		}
+		if self.compressor == nil {
+			self.compressor, _ = flate.NewWriter(self.w, self.level)
+		}
+	}
+	self.size += uint32(len(p))
+	self.digest = crc32.Update(self.digest, crc32.IEEETable, p)
+	n, self.err = self.compressor.Write(p)
+	return n, self.err
+}
+
+/// flush flushes any pending compressed data to the underlying writer.
+///
+/// It is useful mainly in compressed network protocols, to ensure that
+/// a remote reader has enough data to reconstruct a packet. Flush does
+/// not return until the data has been written. If the underlying
+/// writer returns an error, Flush returns that error.
+///
+/// In the terminology of the zlib library, Flush is equivalent to Z_SYNC_FLUSH.
+pub fn flush(self: Writer) -> Unit!GzipError {
+	if self.err != nil {
+		return self.err
+	}
+	if self.closed {
+		return nil
+	}
+	if !self.wrote_header {
+		self.Write(nil)
+		if self.err != nil {
+			return self.err
+		}
+	}
+	self.err = self.compressor.Flush()
+	return self.err
+}
+
+/// close closes the [Writer] by flushing any unwritten data to the underlying
+/// [io.Writer] and writing the GZIP footer.
+/// It does not close the underlying [io.Writer].
+pub fn close(self: Writer, ) -> Unit!GzipError {
+	if self.err != nil {
+		return self.err
+	}
+	if self.closed {
+		return nil
+	}
+	self.closed = true
+	if !self.wrote_header {
+		self.Write(nil)
+		if self.err != nil {
+			return self.err
+		}
+	}
+	self.err = self.compressor.Close()
+	if self.err != nil {
+		return self.err
+	}
+	le.PutUint32(self.buf[:4], self.digest)
+	le.PutUint32(self.buf[4:8], self.size)
+	_, self.err = self.w.Write(self.buf[:8])
+	return self.err
 }

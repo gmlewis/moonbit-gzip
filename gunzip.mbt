@@ -35,7 +35,7 @@ pub type! ErrorNoEOF
 pub struct Header {
   comment : String // comment
   extra : Bytes? // "extra data"
-  mod_time : String // modification time - TODO: support Time
+  mod_time : @wallClock.DateTime? // modification time
   name : String // file name
   os : Byte // operating system type
 }
