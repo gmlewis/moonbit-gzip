@@ -27,12 +27,12 @@ pub struct Writer {
   w : IOWriter
   level : CompressionLevel
   mut wrote_header : Bool
-  closed : Bool
+  mut closed : Bool
   mut buf : FixedArray[Byte] // [10]byte
-  compressor : IOWriter
-  digest : UInt // CRC-32, IEEE polynomial (section 8)
-  size : UInt // Uncompressed size (section 2.3.1)
-  err : Error?
+  mut compressor : IOWriter?
+  mut digest : UInt // CRC-32, IEEE polynomial (section 8)
+  mut size : UInt // Uncompressed size (section 2.3.1)
+  mut err : Error?
 }
 
 pub type! GzipError String derive(Show)
@@ -62,7 +62,7 @@ pub fn Writer::new(
     wrote_header: false,
     closed: false,
     buf,
-    compressor: w,
+    compressor: None,
     digest: 0U, // CRC-32, IEEE polynomial (section 8)
     size: 0U, // Uncompressed size (section 2.3.1)
     err: None,
@@ -91,6 +91,18 @@ fn le_put_uint16(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
   b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
 }
 
+fn le_put_uint32(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
+  b[offset] = (value & 0xff).to_byte()
+  b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
+  b[offset + 2] = (value.lsr(16) & 0xff).to_byte()
+  b[offset + 3] = (value.lsr(24) & 0xff).to_byte()
+}
+
+fn le_put_uint64(b : FixedArray[Byte], offset : Int, value : UInt64) -> Unit {
+  le_put_uint32(b, offset, (value & 0xffffffff).to_uint())
+  le_put_uint32(b, offset + 4, (value.lsr(32) & 0xffffffff).to_uint())
+}
+
 /// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
 fn write_string(self : Writer, s : String) -> Unit!GzipError {
@@ -115,74 +127,74 @@ fn write_string(self : Writer, s : String) -> Unit!GzipError {
 
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
-pub fn write(self: Writer, p : Bytes) -> Int!Error {
-	match self.err {
+pub fn write(self : Writer, p : Bytes) -> Int!Error {
+  match self.err {
     Some(e) => raise e
     None => ()
-	}
+  }
   let mut n = 0
-	// Write the GZIP header lazily.
-	if not(self.wrote_header) {
-		self.wrote_header = true
+  // Write the GZIP header lazily.
+  if not(self.wrote_header) {
+    self.wrote_header = true
     self.buf = FixedArray::make(10, b'\x00')
     self.buf[0] = gzip_id1
     self.buf[1] = gzip_id2
     self.buf[2] = gzip_deflate
-		match self.header.extra {
+    match self.header.extra {
       Some(_) => self.buf[3] = b'\x04'
       None => ()
-		}
-		if self.header.name != "" {
-			self.buf[3] = self.buf[3] | b'\x08'
-		}
-		if self.header.comment != "" {
-			self.buf[3] = self.buf[3] | b'\x10'
-		}
-		match self.mod_time {
+    }
+    if self.header.name != "" {
+      self.buf[3] = self.buf[3] | b'\x08'
+    }
+    if self.header.comment != "" {
+      self.buf[3] = self.buf[3] | b'\x10'
+    }
+    match self.header.mod_time {
       Some(t) => {
         let t = t.seconds.to_uint()
-			  // Section 2.3.1, the zero value for MTIME means that the
-			  // modified time is not set.
-			  le_put_uint32(self.buf, 4, t)
+        // Section 2.3.1, the zero value for MTIME means that the
+        // modified time is not set.
+        le_put_uint32(self.buf, 4, t)
       }
       None => ()
-		}
-		if self.level == best_compression {
-			self.buf[8] = 2
-		} else if self.level == best_speed {
-			self.buf[8] = 4
-		}
-		self.buf[9] = self.os
-		_, self.err = self.w.Write(self.buf)
-		if self.err != nil {
-			return 0, self.err
-		}
-		if self.Extra != nil {
-			self.err = self.writeBytes(self.Extra)
-			if self.err != nil {
-				return 0, self.err
-			}
-		}
-		if self.Name != "" {
-			self.err = self.writeString(self.Name)
-			if self.err != nil {
-				return 0, self.err
-			}
-		}
-		if self.Comment != "" {
-			self.err = self.writeString(self.Comment)
-			if self.err != nil {
-				return 0, self.err
-			}
-		}
-		if self.compressor == nil {
-			self.compressor, _ = flate.NewWriter(self.w, self.level)
-		}
-	}
-	self.size += uint32(len(p))
-	self.digest = crc32.Update(self.digest, crc32.IEEETable, p)
-	n, self.err = self.compressor.Write(p)
-	return n, self.err
+    }
+    if self.level == best_compression {
+      self.buf[8] = b'\x02'
+    } else if self.level == best_speed {
+      self.buf[8] = b'\x04'
+    }
+    self.buf[9] = self.header.os
+    let b = Bytes::of(self.buf)
+    match self.w.write(b) {
+      Ok(_) => ()
+      e => raise GzipError("write_bytes error: \{e}")
+    }
+    match self.header.extra {
+      Some(b) => self.write_bytes!(b)
+      None => ()
+    }
+    if self.header.name != "" {
+      self.write_string!(self.header.name)
+    }
+    if self.header.comment != "" {
+      self.write_string!(self.header.comment)
+    }
+    match self.compressor {
+      Some(_) => ()
+      None => self.compressor = flate_new_writer(self.w, self.level)
+    }
+  }
+  self.size += p.length().reinterpret_as_uint()
+  let sum = @crc32.Digest::new()
+  for b in p {
+    sum.write(b)
+  }
+  self.digest = sum.digest()
+  match self.compressor {
+    Some(compressor) => compressor.write!(p)
+    None => raise GzipError("programming error - missing compressor")
+  }
 }
 
 /// flush flushes any pending compressed data to the underlying writer.
@@ -193,46 +205,58 @@ pub fn write(self: Writer, p : Bytes) -> Int!Error {
 /// writer returns an error, Flush returns that error.
 ///
 /// In the terminology of the zlib library, Flush is equivalent to Z_SYNC_FLUSH.
-pub fn flush(self: Writer) -> Unit!GzipError {
-	if self.err != nil {
-		return self.err
-	}
-	if self.closed {
-		return nil
-	}
-	if !self.wrote_header {
-		self.Write(nil)
-		if self.err != nil {
-			return self.err
-		}
-	}
-	self.err = self.compressor.Flush()
-	return self.err
+pub fn flush(self : Writer) -> Unit!Error {
+  match self.err {
+    Some(e) => raise e
+    None => ()
+  }
+  if self.closed {
+    return
+  }
+  if not(self.wrote_header) {
+    let _ = self.write!(Bytes::new(0))
+    match self.err {
+      Some(e) => raise e
+      None => ()
+    }
+  }
+  match self.compressor {
+    Some(compressor) => self.err = compressor.flush()
+    None => raise GzipError("programming error - missing compressor")
+  }
 }
 
 /// close closes the [Writer] by flushing any unwritten data to the underlying
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
-pub fn close(self: Writer, ) -> Unit!GzipError {
-	if self.err != nil {
-		return self.err
-	}
-	if self.closed {
-		return nil
-	}
-	self.closed = true
-	if !self.wrote_header {
-		self.Write(nil)
-		if self.err != nil {
-			return self.err
-		}
-	}
-	self.err = self.compressor.Close()
-	if self.err != nil {
-		return self.err
-	}
-	le.PutUint32(self.buf[:4], self.digest)
-	le.PutUint32(self.buf[4:8], self.size)
-	_, self.err = self.w.Write(self.buf[:8])
-	return self.err
+pub fn close(self : Writer) -> Unit!Error {
+  match self.err {
+    Some(e) => raise e
+    None => ()
+  }
+  if self.closed {
+    return
+  }
+  self.closed = true
+  if not(self.wrote_header) {
+    let _ = self.write!(Bytes::new(0))
+    match self.err {
+      Some(e) => raise e
+      None => ()
+    }
+  }
+  match self.compressor {
+    Some(compressor) => self.err = compressor.close()
+    None => raise GzipError("programming error - missing compressor")
+  }
+  le_put_uint32(self.buf, 0, self.digest)
+  le_put_uint32(self.buf, 4, self.size)
+  self.w.write!(self.buf[0])
+  self.w.write!(self.buf[1])
+  self.w.write!(self.buf[2])
+  self.w.write!(self.buf[3])
+  self.w.write!(self.buf[4])
+  self.w.write!(self.buf[5])
+  self.w.write!(self.buf[6])
+  self.w.write!(self.buf[7])
 }
