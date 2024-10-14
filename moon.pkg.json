@@ -1,6 +1,8 @@
 {
   "import": [
     "gmlewis/base64",
-    "gmlewis/crc32"
+    "gmlewis/crc32",
+    "gmlewis/flate",
+    "moonbitlang/x/time"
   ]
 }

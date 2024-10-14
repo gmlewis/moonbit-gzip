@@ -7,29 +7,30 @@
 
 pub type CompressionLevel Int derive(Show, Compare, Eq)
 
-pub let huffman_only : CompressionLevel = -2
+// pub let huffman_only : CompressionLevel = -2
 
-pub let default_compression : CompressionLevel = -1
+// pub let default_compression : CompressionLevel = -1
 
-pub let no_compression : CompressionLevel = 0
+// pub let no_compression : CompressionLevel = 0
 
 pub let best_speed : CompressionLevel = 1
 
-pub let best_compression : CompressionLevel = 9
+// pub let best_compression : CompressionLevel = 9
 
-pub trait IOWriter {
-  write(Self, Bytes) -> Result[Unit, Error]
+pub trait IOWriteCloser {
+  write(Self, Bytes) -> Int!Error
+  close(Self) -> Unit!Error
 }
 
 /// Writes to a Writer are compressed and written to w.
 pub struct Writer {
   header : Header // written at first call to Write, Flush, or Close
-  w : IOWriter
+  w : @flate.IOWriter
   level : CompressionLevel
   mut wrote_header : Bool
   mut closed : Bool
   mut buf : FixedArray[Byte] // [10]byte
-  mut compressor : IOWriter?
+  mut compressor : IOWriteCloser
   mut digest : UInt // CRC-32, IEEE polynomial (section 8)
   mut size : UInt // Uncompressed size (section 2.3.1)
   mut err : Error?
@@ -46,23 +47,17 @@ pub type! GzipError String derive(Show)
 ///
 /// Callers that wish to set the fields in Writer.Header must do so before
 /// the first call to Write, Flush, or Close.
-pub fn Writer::new(
-  w : IOWriter,
-  ~level : CompressionLevel = default_compression
-) -> Writer!GzipError {
-  if level < huffman_only || level > best_compression {
-    raise GzipError("gzip: invalid compression level: \{level}")
-  }
+pub fn Writer::new(w : @flate.IOWriter) -> Writer {
   let header = Header::new()
   let buf = FixedArray::make(10, b'\x00')
   {
     header,
     w,
-    level,
+    level: best_speed,
     wrote_header: false,
     closed: false,
     buf,
-    compressor: None,
+    compressor: @flate.Writer::new(w),
     digest: 0U, // CRC-32, IEEE polynomial (section 8)
     size: 0U, // Uncompressed size (section 2.3.1)
     err: None,
@@ -70,42 +65,37 @@ pub fn Writer::new(
 }
 
 // write_bytes writes a length-prefixed byte slice to self.w.
-fn write_bytes(self : Writer, b : Bytes) -> Unit!GzipError {
+fn write_bytes(self : Writer, b : Bytes) -> Unit!Error {
   if b.length() > 0xffff {
     raise GzipError("gzip.Write: Extra data is too large")
   }
   le_put_uint16(self.buf, 0, b.length().reinterpret_as_uint())
   let le_len = Bytes::from_array([self.buf[0], self.buf[1]])
-  match self.w.write(le_len) {
-    Ok(_) => ()
-    e => raise GzipError("write_bytes error: \{e}")
-  }
-  match self.w.write(b) {
-    Ok(_) => ()
-    e => raise GzipError("write_bytes error: \{e}")
-  }
+  let _ = self.w.write!(le_len)
+  let _ = self.w.write!(b)
+
 }
 
 fn le_put_uint16(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
   b[offset] = (value & 0xff).to_byte()
-  b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
+  b[offset + 1] = ((value >> 8) & 0xff).to_byte()
 }
 
 fn le_put_uint32(b : FixedArray[Byte], offset : Int, value : UInt) -> Unit {
   b[offset] = (value & 0xff).to_byte()
-  b[offset + 1] = (value.lsr(8) & 0xff).to_byte()
-  b[offset + 2] = (value.lsr(16) & 0xff).to_byte()
-  b[offset + 3] = (value.lsr(24) & 0xff).to_byte()
+  b[offset + 1] = ((value >> 8) & 0xff).to_byte()
+  b[offset + 2] = ((value >> 16) & 0xff).to_byte()
+  b[offset + 3] = ((value >> 24) & 0xff).to_byte()
 }
 
-fn le_put_uint64(b : FixedArray[Byte], offset : Int, value : UInt64) -> Unit {
-  le_put_uint32(b, offset, (value & 0xffffffff).to_uint())
-  le_put_uint32(b, offset + 4, (value.lsr(32) & 0xffffffff).to_uint())
-}
+// fn le_put_uint64(b : FixedArray[Byte], offset : Int, value : UInt64) -> Unit {
+//   le_put_uint32(b, offset, (value & 0xffffffff).to_uint())
+//   le_put_uint32(b, offset + 4, ((value >> 32) & 0xffffffff).to_uint())
+// }
 
 /// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
-fn write_string(self : Writer, s : String) -> Unit!GzipError {
+fn write_string(self : Writer, s : String) -> Unit!Error {
   // GZIP stores Latin-1 strings; error if non-Latin-1; convert if non-ASCII.
   for v in s {
     if v == Char::from_int(0) || v > Char::from_int(0xff) {
@@ -113,16 +103,11 @@ fn write_string(self : Writer, s : String) -> Unit!GzipError {
     }
   }
   let b = @base64.str2bytes(s)
-  match self.w.write(b) {
-    Ok(_) => ()
-    e => raise GzipError("write_bytes error: \{e}")
-  }
+  let _ = self.w.write!(b)
   // GZIP strings are NUL-terminated.
   let b = Bytes::make(1, b'\x00')
-  match self.w.write(b) {
-    Ok(_) => ()
-    e => raise GzipError("write_bytes error: \{e}")
-  }
+  let _ = self.w.write!(b)
+
 }
 
 // write writes a compressed form of p to the underlying [io.Writer]. The
@@ -132,7 +117,6 @@ pub fn write(self : Writer, p : Bytes) -> Int!Error {
     Some(e) => raise e
     None => ()
   }
-  let mut n = 0
   // Write the GZIP header lazily.
   if not(self.wrote_header) {
     self.wrote_header = true
@@ -152,24 +136,22 @@ pub fn write(self : Writer, p : Bytes) -> Int!Error {
     }
     match self.header.mod_time {
       Some(t) => {
-        let t = t.seconds.to_uint()
+        let t = t.to_unix_second().reinterpret_as_uint64().to_uint()
         // Section 2.3.1, the zero value for MTIME means that the
         // modified time is not set.
         le_put_uint32(self.buf, 4, t)
       }
       None => ()
     }
-    if self.level == best_compression {
-      self.buf[8] = b'\x02'
-    } else if self.level == best_speed {
-      self.buf[8] = b'\x04'
-    }
+    // This version only supports 'best_speed'.
+    // if self.level == best_compression {
+    //   self.buf[8] = b'\x02'
+    // } else if self.level == best_speed {
+    self.buf[8] = b'\x04'
+    // }
     self.buf[9] = self.header.os
     let b = Bytes::of(self.buf)
-    match self.w.write(b) {
-      Ok(_) => ()
-      e => raise GzipError("write_bytes error: \{e}")
-    }
+    let _ = self.w.write!(b)
     match self.header.extra {
       Some(b) => self.write_bytes!(b)
       None => ()
@@ -180,10 +162,6 @@ pub fn write(self : Writer, p : Bytes) -> Int!Error {
     if self.header.comment != "" {
       self.write_string!(self.header.comment)
     }
-    match self.compressor {
-      Some(_) => ()
-      None => self.compressor = flate_new_writer(self.w, self.level)
-    }
   }
   self.size += p.length().reinterpret_as_uint()
   let sum = @crc32.Digest::new()
@@ -191,10 +169,7 @@ pub fn write(self : Writer, p : Bytes) -> Int!Error {
     sum.write(b)
   }
   self.digest = sum.digest()
-  match self.compressor {
-    Some(compressor) => compressor.write!(p)
-    None => raise GzipError("programming error - missing compressor")
-  }
+  self.compressor.write!(p)
 }
 
 /// flush flushes any pending compressed data to the underlying writer.
@@ -220,10 +195,7 @@ pub fn flush(self : Writer) -> Unit!Error {
       None => ()
     }
   }
-  match self.compressor {
-    Some(compressor) => self.err = compressor.flush()
-    None => raise GzipError("programming error - missing compressor")
-  }
+  // self.err = self.compressor.flush()
 }
 
 /// close closes the [Writer] by flushing any unwritten data to the underlying
@@ -245,18 +217,25 @@ pub fn close(self : Writer) -> Unit!Error {
       None => ()
     }
   }
-  match self.compressor {
-    Some(compressor) => self.err = compressor.close()
-    None => raise GzipError("programming error - missing compressor")
+  try {
+    self.compressor.close!()
+  } catch {
+    e => self.err = Some(e)
   }
   le_put_uint32(self.buf, 0, self.digest)
   le_put_uint32(self.buf, 4, self.size)
-  self.w.write!(self.buf[0])
-  self.w.write!(self.buf[1])
-  self.w.write!(self.buf[2])
-  self.w.write!(self.buf[3])
-  self.w.write!(self.buf[4])
-  self.w.write!(self.buf[5])
-  self.w.write!(self.buf[6])
-  self.w.write!(self.buf[7])
+  let footer = Bytes::from_array(
+    [
+      self.buf[0],
+      self.buf[1],
+      self.buf[2],
+      self.buf[3],
+      self.buf[4],
+      self.buf[5],
+      self.buf[6],
+      self.buf[7],
+    ],
+  )
+  let _ = self.w.write!(footer)
+
 }

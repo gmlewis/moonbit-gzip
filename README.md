@@ -1,7 +1,7 @@
 # gmlewis/gzip
 [![check](https://github.com/gmlewis/moonbit-gzip/actions/workflows/check.yml/badge.svg)](https://github.com/gmlewis/moonbit-gzip/actions/workflows/check.yml)
 
-This is a simple gzip/gunzip algorithm based on Go's implementation:
+This is a simplified gzip/gunzip algorithm based on Go's implementation:
 https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gzip.go
 which has the copyright notice:
 
@@ -17,9 +17,9 @@ The code has been updated to support compiler:
 
 ```bash
 $ moon version --all
-moon 0.1.20240902 (23dcb39 2024-09-02) ~/.moon/bin/moon
-moonc v0.1.20240902+a8d98d78a ~/.moon/bin/moonc
-moonrun 0.1.20240902 (23dcb39 2024-09-02) ~/.moon/bin/moonrun
+moon 0.1.20241011 (ca50f51 2024-10-11) ~/.moon/bin/moon
+moonc v0.1.20241011+9ea637707 ~/.moon/bin/moonc
+moonrun 0.1.20241011 (ca50f51 2024-10-11) ~/.moon/bin/moonrun
 ```
 
 Use `moonup` to manage `moon` compiler versions:
