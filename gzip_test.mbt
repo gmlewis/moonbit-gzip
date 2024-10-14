@@ -6,11 +6,12 @@
 // license that can be found in the LICENSE file.
 
 test "empty payload still forms a valid GZIP stream" {
-  let buf = @buffer.Buffer::new()
-  @gzip.Writer::new(@gzip.IOWriter::from_buffer(buf)).close!()
+  let in_buf = @buffer.Buffer::new()
+  @gzip.Writer::new(@flate.IOWriter::from_buffer(in_buf)).close!()
 
   //
-  // let r = @gzip.Reader::new()
+  let out_buf = @buffer.Buffer::new()
+  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(out_buf))
   // r, err := NewReader(buf)
   // if err != nil {
   // 	t.Fatalf("NewReader: %v", err)

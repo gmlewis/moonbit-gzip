@@ -33,7 +33,7 @@ pub type! IOEOF  derive(Show, Eq)
 
 // var le = binary.LittleEndian
 
-// no_eof converts io.EOF to io.ErrUnexpectedEOF.
+// no_eof converts IOEOF to io.ErrUnexpectedEOF.
 fn no_eof(err : Error) -> Error {
   match err {
     IOEOF => ErrUnexpectedEOF
@@ -70,12 +70,12 @@ pub fn Header::new() -> Header {
 // The Reader will return an [ErrChecksum] when [Reader.Read]
 // reaches the end of the uncompressed data if it does not
 // have the expected length or checksum. Clients should treat data
-// returned by [Reader.Read] as tentative until they receive the [io.EOF]
+// returned by [Reader.Read] as tentative until they receive the [IOEOF]
 // marking the end of the data.
 pub struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
-  priv mut r : IOReader
-  priv mut decompressor : IOReadCloser
+  priv mut r : @flate.IOReader
+  priv mut decompressor : @flate.IOReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
   priv mut size : UInt // Uncompressed size (section 2.3.1)
   priv mut buf : Array[Byte] // [512]byte
@@ -88,7 +88,7 @@ pub struct Reader {
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
-fn Reader::new(r : IOReader) -> Reader!Error {
+pub fn Reader::new(r : @flate.IOReader) -> Reader!Error {
   let z = {
     header: Header::new(),
     r,
@@ -105,7 +105,7 @@ fn Reader::new(r : IOReader) -> Reader!Error {
 // Reset discards the [Reader] z's state and makes it equivalent to the
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
-fn reset(self : Reader, r : IOReader) -> Reader!Error {
+fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
   self.r = r
   self.digest = @crc32.Digest::new()
   self.size = 0
@@ -128,10 +128,10 @@ fn reset(self : Reader, r : IOReader) -> Reader!Error {
 // can be useful when reading file formats that distinguish individual gzip
 // data streams or mix gzip data streams with other data streams.
 // In this mode, when the [Reader] reaches the end of the data stream,
-// [Reader.Read] returns [io.EOF]. The underlying reader must implement [io.ByteReader]
+// [Reader.Read] returns [IOEOF]. The underlying reader must implement [io.ByteReader]
 // in order to be left positioned just after the gzip stream.
 // To start the next stream, call self.Reset(r) followed by self.Multistream(false).
-// If there is no next stream, self.Reset(r) will return [io.EOF].
+// If there is no next stream, self.Reset(r) will return [IOEOF].
 pub fn multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
@@ -176,7 +176,7 @@ fn read_header(self : Reader) -> Header!Error {
   // Other than this, the specification does not clarify whether a
   // "series" is defined as "one or more" or "zero or more". To err on the
   // side of caution, Go interprets this to mean "zero or more".
-  // Thus, it is okay to return io.EOF here.
+  // Thus, it is okay to return IOEOF here.
   let hdr = Header::new()
   let _ = self.r.read_full!(self.buf[:10])
   if self.buf[0] != gzip_id1 ||
@@ -306,11 +306,12 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
     if not(self.multistream) {
       return n
     }
-    self.err = None // Remove io.EOF
+    self.err = None // Remove IOEOF
     try {
       let _ = self.read_header!()
 
     } catch {
+      IOEOF => return n
       e => raise e // return n, self.err
     }
   }
@@ -319,7 +320,7 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
 
 // Close closes the [Reader]. It does not close the underlying [io.Reader].
 // In order for the GZIP checksum to be verified, the reader must be
-// fully consumed until the [io.EOF].
+// fully consumed until the [IOEOF].
 fn close(self : Reader) -> Unit!Error {
   self.decompressor.close!()
 }

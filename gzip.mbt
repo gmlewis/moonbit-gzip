@@ -20,7 +20,7 @@ pub let best_speed : CompressionLevel = 1
 /// Writes to a Writer are compressed and written to w.
 pub struct Writer {
   header : Header // written at first call to Write, Flush, or Close
-  w : IOWriter
+  w : @flate.IOWriter
   level : CompressionLevel
   mut wrote_header : Bool
   mut closed : Bool
@@ -42,7 +42,7 @@ pub type! GzipError String derive(Show)
 ///
 /// Callers that wish to set the fields in Writer.Header must do so before
 /// the first call to Write, Flush, or Close.
-pub fn Writer::new(w : IOWriter) -> Writer {
+pub fn Writer::new(w : @flate.IOWriter) -> Writer {
   let header = Header::new()
   let buf = Array::make(10, b'\x00')
   {
