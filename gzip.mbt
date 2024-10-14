@@ -33,7 +33,7 @@ pub struct Writer {
 
 pub type! GzipError String derive(Show)
 
-/// Writer::new returns a new [Writer] using the optional compression level
+/// Writer::new returns a new [IOWriter] using the optional compression level
 /// (or `default_compression`).
 /// Writes to the returned writer are compressed and written to w.
 ///

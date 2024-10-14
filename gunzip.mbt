@@ -83,7 +83,7 @@ pub struct Reader {
   priv mut multistream : Bool
 }
 
-// NewReader creates a new [Reader] reading the given reader.
+// NewReader creates a new [IOReader] reading the given reader.
 //
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
