@@ -47,18 +47,18 @@ fn no_eof(err : Error) -> Error {
 /// Strings must be UTF-8 encoded and may only contain Unicode code points
 /// U+0001 through U+00FF, due to limitations of the GZIP file format.
 pub struct Header {
-  comment : String // comment
-  extra : Bytes? // "extra data"
-  mod_time : @time.PlainDateTime? // modification time
-  name : String // file name
-  os : Byte // operating system type
+  mut comment : String // comment
+  mut extra : Array[Byte] // "extra data"
+  mut mod_time : @time.PlainDateTime? // modification time
+  mut name : String // file name
+  mut os : Byte // operating system type
 }
 
 pub fn Header::new() -> Header {
-  { comment: "", extra: None, mod_time: None, name: "", os: b'\xff' }
+  { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
 }
 
-// A Reader is a [@flat.IOReader] that can be read to retrieve
+// A Reader is a [@flate.IOReadCloser] that can be read to retrieve
 // uncompressed data from a gzip-format compressed file.
 //
 // In general, a gzip file can be a concatenation of gzip files,
@@ -73,7 +73,7 @@ pub fn Header::new() -> Header {
 // returned by [Reader.Read] as tentative until they receive the [io.EOF]
 // marking the end of the data.
 pub struct Reader {
-  header : Header // valid after NewReader or Reader.Reset
+  mut header : Header // valid after NewReader or Reader.Reset
   priv mut r : @flate.IOReader
   priv mut decompressor : @flate.IOReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
@@ -84,8 +84,6 @@ pub struct Reader {
 }
 
 // NewReader creates a new [Reader] reading the given reader.
-// If r does not also implement [io.ByteReader],
-// the decompressor may read more data than necessary from r.
 //
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
@@ -115,6 +113,7 @@ fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
   self.err = None
   self.multistream = true
   self.header = self.read_header!()
+  self
 }
 
 // Multistream controls whether the reader supports multistream files.
@@ -131,16 +130,16 @@ fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
 // In this mode, when the [Reader] reaches the end of the data stream,
 // [Reader.Read] returns [io.EOF]. The underlying reader must implement [io.ByteReader]
 // in order to be left positioned just after the gzip stream.
-// To start the next stream, call z.Reset(r) followed by z.Multistream(false).
-// If there is no next stream, z.Reset(r) will return [io.EOF].
+// To start the next stream, call self.Reset(r) followed by self.Multistream(false).
+// If there is no next stream, self.Reset(r) will return [io.EOF].
 pub fn multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
 
-// readString reads a NUL-terminated string from z.r.
+// read_string reads a NUL-terminated string from self.r.
 // It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
 // will output a string encoded using UTF-8.
-// This method always updates z.digest with the data read.
+// This method always updates self.digest with the data read.
 fn read_string(self : Reader) -> String!Error {
   let mut err : Error? = None
   let mut need_conv = false
@@ -169,122 +168,159 @@ fn read_string(self : Reader) -> String!Error {
   raise fail!("unterminated string")
 }
 
-// // readHeader reads the GZIP header according to section 2.3.1.
-// // This method does not set z.err.
-// func (z *Reader) readHeader() (hdr Header, err error) {
-// 	if _, err = io.ReadFull(z.r, z.buf[:10]); err != nil {
-// 		// RFC 1952, section 2.2, says the following:
-// 		//	A gzip file consists of a series of "members" (compressed data sets).
-// 		//
-// 		// Other than this, the specification does not clarify whether a
-// 		// "series" is defined as "one or more" or "zero or more". To err on the
-// 		// side of caution, Go interprets this to mean "zero or more".
-// 		// Thus, it is okay to return io.EOF here.
-// 		return hdr, err
-// 	}
-// 	if z.buf[0] != gzipID1 || z.buf[1] != gzipID2 || z.buf[2] != gzipDeflate {
-// 		return hdr, ErrHeader
-// 	}
-// 	flg := z.buf[3]
-// 	if t := int64(le.Uint32(z.buf[4:8])); t > 0 {
-// 		// Section 2.3.1, the zero value for MTIME means that the
-// 		// modified time is not set.
-// 		hdr.ModTime = time.Unix(t, 0)
-// 	}
-// 	// z.buf[8] is XFL and is currently ignored.
-// 	hdr.OS = z.buf[9]
-// 	z.digest = crc32.ChecksumIEEE(z.buf[:10])
+// readHeader reads the GZIP header according to section 2.3.1.
+// This method does not set self.err.
+fn read_header(self : Reader) -> Header!Error {
+  // RFC 1952, section 2.2, says the following:
+  //	A gzip file consists of a series of "members" (compressed data sets).
+  //
+  // Other than this, the specification does not clarify whether a
+  // "series" is defined as "one or more" or "zero or more". To err on the
+  // side of caution, Go interprets this to mean "zero or more".
+  // Thus, it is okay to return io.EOF here.
+  let mut hdr = Header::new()
+  let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:10])
+  if self.buf[0] != gzip_id1 ||
+    self.buf[1] != gzip_id2 ||
+    self.buf[2] != gzip_deflate {
+    raise ErrHeader
+  }
+  let flg = self.buf[3]
+  let t = le_uint32(self.buf[4:8]).to_int64()
+  if t > 0 {
+    // Section 2.3.1, the zero value for MTIME means that the
+    // modified time is not set.
+    hdr.mod_time = Some(
+      @time.PlainDateTime::from_unix_second!(t, 0, @time.utc_offset),
+    )
+  }
+  // self.buf[8] is XFL and is currently ignored.
+  hdr.os = self.buf[9]
+  self.digest = @crc32.Digest::new()
+  for i in 0..<10 {
+    self.digest.write(self.buf[i])
+  }
+  if (flg & flag_extra) != 0 {
+    try {
+      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:2])
 
-// 	if flg&flagExtra != 0 {
-// 		if _, err = io.ReadFull(z.r, z.buf[:2]); err != nil {
-// 			return hdr, no_eof(err)
-// 		}
-// 		z.digest = crc32.Update(z.digest, crc32.IEEETable, z.buf[:2])
-// 		data := make([]byte, le.Uint16(z.buf[:2]))
-// 		if _, err = io.ReadFull(z.r, data); err != nil {
-// 			return hdr, no_eof(err)
-// 		}
-// 		z.digest = crc32.Update(z.digest, crc32.IEEETable, data)
-// 		hdr.Extra = data
-// 	}
+    } catch {
+      e => raise no_eof(e)
+    }
+    self.digest..write(self.buf[0]).write(self.buf[1])
+    let data_size = le_uint16(self.buf[:2]).reinterpret_as_int()
+    let data = Array::make(data_size, b'\x00')
+    try {
+      let _ = self.r.read_full!(@flate.Slice::new(data))
 
-// 	var s string
-// 	if flg&flagName != 0 {
-// 		if s, err = z.readString(); err != nil {
-// 			return hdr, no_eof(err)
-// 		}
-// 		hdr.Name = s
-// 	}
+    } catch {
+      e => raise no_eof(e)
+    }
+    for i in 0..<data_size {
+      self.digest.write(data[i])
+    }
+    hdr.extra = data
+  }
+  if (flg & flag_name) != 0 {
+    let s = try {
+      self.read_string!()
+    } catch {
+      e => raise no_eof(e)
+    }
+    hdr.name = s
+  }
+  if (flg & flag_comment) != 0 {
+    let s = try {
+      self.read_string!()
+    } catch {
+      e => raise no_eof(e)
+    }
+    hdr.comment = s
+  }
+  if (flg & flag_hdr_crc) != 0 {
+    try {
+      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:2])
 
-// 	if flg&flagComment != 0 {
-// 		if s, err = z.readString(); err != nil {
-// 			return hdr, no_eof(err)
-// 		}
-// 		hdr.Comment = s
-// 	}
+    } catch {
+      e => raise no_eof(e)
+    }
+    let digest = le_uint16(self.buf[:2])
+    if digest != self.digest.digest() {
+      raise ErrHeader
+    }
+  }
+  self.digest = @crc32.Digest::new()
+  self.decompressor = @flate.Reader::new(self.r)
+  hdr
+}
 
-// 	if flg&flagHdrCrc != 0 {
-// 		if _, err = io.ReadFull(z.r, z.buf[:2]); err != nil {
-// 			return hdr, no_eof(err)
-// 		}
-// 		digest := le.Uint16(z.buf[:2])
-// 		if digest != uint16(z.digest) {
-// 			return hdr, ErrHeader
-// 		}
-// 	}
+fn le_uint16(b : ArrayView[Byte]) -> UInt {
+  b[0].to_uint() | (b[1].to_uint() << 8)
+}
 
-// 	z.digest = 0
-// 	if z.decompressor == nil {
-// 		z.decompressor = flate.NewReader(z.r)
-// 	} else {
-// 		z.decompressor.(flate.Resetter).Reset(z.r, nil)
-// 	}
-// 	return hdr, nil
-// }
+fn le_uint32(b : ArrayView[Byte]) -> UInt {
+  b[0].to_uint() |
+  (b[1].to_uint() << 8) |
+  (b[2].to_uint() << 16) |
+  (b[3].to_uint() << 24)
+}
 
-// // Read implements [io.Reader], reading uncompressed bytes from its underlying [Reader].
-// func (z *Reader) Read(p []byte) (n int, err error) {
-// 	if z.err != nil {
-// 		return 0, z.err
-// 	}
+// Read implements [@flate.IOReadCloser], reading uncompressed bytes from its underlying [Reader].
+fn read(self : Reader, p : @flate.Slice[Byte]) -> Int!Error {
+  if not(self.err.is_empty()) {
+    raise self.err.unwrap()
+  }
+  let mut n = 0
+  while n == 0 {
+    n = self.decompressor.read!(p)
+    for i in 0..<n {
+      self.digest.write(p[i])
+    }
+    self.size += n.reinterpret_as_uint()
+    match self.err {
+      Some(@flate.IOEOF) => ()
+      // In the normal case we return here.
+      None => return n
+      Some(e) => raise e
+    }
 
-// 	for n == 0 {
-// 		n, z.err = z.decompressor.Read(p)
-// 		z.digest = crc32.Update(z.digest, crc32.IEEETable, p[:n])
-// 		z.size += uint32(n)
-// 		if z.err != io.EOF {
-// 			// In the normal case we return here.
-// 			return n, z.err
-// 		}
+    // Finished file; check checksum and size.
+    try {
+      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:8])
 
-// 		// Finished file; check checksum and size.
-// 		if _, err := io.ReadFull(z.r, z.buf[:8]); err != nil {
-// 			z.err = no_eof(err)
-// 			return n, z.err
-// 		}
-// 		digest := le.Uint32(z.buf[:4])
-// 		size := le.Uint32(z.buf[4:8])
-// 		if digest != z.digest || size != z.size {
-// 			z.err = ErrChecksum
-// 			return n, z.err
-// 		}
-// 		z.digest, z.size = 0, 0
+    } catch {
+      e =>
+        match no_eof(e) {
+          @flate.IOEOF => return n
+          e => raise e
+        }
+    }
+    let digest = le_uint32(self.buf[:4])
+    let size = le_uint32(self.buf[4:8])
+    if digest != self.digest.digest() || size != self.size {
+      raise ErrChecksum
+    }
+    self.digest = @crc32.Digest::new()
+    self.size = 0
 
-// 		// File is ok; check if there is another.
-// 		if !z.multistream {
-// 			return n, io.EOF
-// 		}
-// 		z.err = nil // Remove io.EOF
+    // File is ok; check if there is another.
+    if not(self.multistream) {
+      return n
+    }
+    self.err = None // Remove io.EOF
+    try {
+      let _ = self.read_header!()
 
-// 		if _, z.err = z.readHeader(); z.err != nil {
-// 			return n, z.err
-// 		}
-// 	}
+    } catch {
+      e => raise e // return n, self.err
+    }
+  }
+  return n
+}
 
-// 	return n, nil
-// }
-
-// // Close closes the [Reader]. It does not close the underlying [io.Reader].
-// // In order for the GZIP checksum to be verified, the reader must be
-// // fully consumed until the [io.EOF].
-// func (z *Reader) Close() error { return z.decompressor.Close() }
+// Close closes the [Reader]. It does not close the underlying [io.Reader].
+// In order for the GZIP checksum to be verified, the reader must be
+// fully consumed until the [io.EOF].
+fn close(self : Reader) -> Unit!Error {
+  self.decompressor.close!()
+}
