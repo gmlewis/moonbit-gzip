@@ -11,7 +11,7 @@ let gzip_id2 = b'\x8b'
 
 let gzip_deflate : Byte = b'\x08'
 
-let flag_text : Byte = b'\x01'
+// let flag_text : Byte = b'\x01'
 
 let flag_hdr_crc : Byte = b'\x02'
 
@@ -141,7 +141,6 @@ pub fn multistream(self : Reader, ok : Bool) -> Unit {
 // will output a string encoded using UTF-8.
 // This method always updates self.digest with the data read.
 fn read_string(self : Reader) -> String!Error {
-  let mut err : Error? = None
   let mut need_conv = false
   for i = 0; true; i = i + 1 {
     if i >= self.buf.length() {
@@ -178,7 +177,7 @@ fn read_header(self : Reader) -> Header!Error {
   // "series" is defined as "one or more" or "zero or more". To err on the
   // side of caution, Go interprets this to mean "zero or more".
   // Thus, it is okay to return io.EOF here.
-  let mut hdr = Header::new()
+  let hdr = Header::new()
   let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:10])
   if self.buf[0] != gzip_id1 ||
     self.buf[1] != gzip_id2 ||
