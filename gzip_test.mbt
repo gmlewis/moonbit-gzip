@@ -7,7 +7,7 @@
 
 test "empty payload still forms a valid GZIP stream" {
   let buf = @buffer.Buffer::new()
-  @gzip.Writer::new(@flate.IOWriter::from_buffer(buf)).close!()
+  @gzip.Writer::new(@gzip.IOWriter::from_buffer(buf)).close!()
 
   //
   // let r = @gzip.Reader::new()

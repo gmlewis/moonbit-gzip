@@ -20,7 +20,7 @@ pub let best_speed : CompressionLevel = 1
 /// Writes to a Writer are compressed and written to w.
 pub struct Writer {
   header : Header // written at first call to Write, Flush, or Close
-  w : @flate.IOWriter
+  w : IOWriter
   level : CompressionLevel
   mut wrote_header : Bool
   mut closed : Bool
@@ -42,7 +42,7 @@ pub type! GzipError String derive(Show)
 ///
 /// Callers that wish to set the fields in Writer.Header must do so before
 /// the first call to Write, Flush, or Close.
-pub fn Writer::new(w : @flate.IOWriter) -> Writer {
+pub fn Writer::new(w : IOWriter) -> Writer {
   let header = Header::new()
   let buf = Array::make(10, b'\x00')
   {
@@ -60,13 +60,13 @@ pub fn Writer::new(w : @flate.IOWriter) -> Writer {
 }
 
 // write_bytes writes a length-prefixed byte slice to self.w.
-fn write_bytes(self : Writer, b : @flate.Slice[Byte]) -> Unit!Error {
+fn write_bytes(self : Writer, b : ArrayView[Byte]) -> Unit!Error {
   if b.length() > 0xffff {
     raise GzipError("gzip.Write: Extra data is too large")
   }
   le_put_uint16(self.buf, 0, b.length().reinterpret_as_uint())
-  let le_len = @flate.Slice::new([self.buf[0], self.buf[1]])
-  let _ = self.w.write!(le_len)
+  let le_len = [self.buf[0], self.buf[1]]
+  let _ = self.w.write!(le_len[:])
   let _ = self.w.write!(b)
 
 }
@@ -97,16 +97,16 @@ fn write_string(self : Writer, s : String) -> Unit!Error {
       raise GzipError("@gzip.write_string: non-Latin-1 header string")
     }
   }
-  let b = @flate.Slice::new(@base64.str2bytes(s).to_array())
+  let b = @base64.str2bytes(s).to_array()[:]
   let _ = self.w.write!(b)
   // GZIP strings are NUL-terminated.
-  let _ = self.w.write!(@flate.Slice::new([b'\x00']))
+  let _ = self.w.write!([b'\x00'][:])
 
 }
 
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
-pub fn write(self : Writer, p : @flate.Slice[Byte]) -> Int!Error {
+pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
   match self.err {
     Some(e) => raise e
     None => ()
@@ -144,11 +144,11 @@ pub fn write(self : Writer, p : @flate.Slice[Byte]) -> Int!Error {
     self.buf[8] = b'\x04'
     // }
     self.buf[9] = self.header.os
-    let b = @flate.Slice::new(self.buf)
+    let b = self.buf[:]
     let _ = self.w.write!(b)
     match self.header.extra {
       [] => ()
-      b => self.write_bytes!(@flate.Slice::new(b))
+      b => self.write_bytes!(b[:])
     }
     if self.header.name != "" {
       self.write_string!(self.header.name)
@@ -183,7 +183,7 @@ pub fn flush(self : Writer) -> Unit!Error {
     return
   }
   if not(self.wrote_header) {
-    let _ = self.write!(@flate.Slice::new([b'\x00']))
+    let _ = self.write!([b'\x00'][:])
     match self.err {
       Some(e) => raise e
       None => ()
@@ -205,7 +205,7 @@ pub fn close(self : Writer) -> Unit!Error {
   }
   self.closed = true
   if not(self.wrote_header) {
-    let _ = self.write!(@flate.Slice::new([b'\x00']))
+    let _ = self.write!([b'\x00'][:])
     match self.err {
       Some(e) => raise e
       None => ()
@@ -218,8 +218,7 @@ pub fn close(self : Writer) -> Unit!Error {
   }
   le_put_uint32(self.buf, 0, self.digest)
   le_put_uint32(self.buf, 4, self.size)
-  let footer = @flate.Slice::new(
-    [
+  let footer = [
       self.buf[0],
       self.buf[1],
       self.buf[2],
@@ -228,8 +227,7 @@ pub fn close(self : Writer) -> Unit!Error {
       self.buf[5],
       self.buf[6],
       self.buf[7],
-    ],
-  )
+    ][:]
   let _ = self.w.write!(footer)
 
 }

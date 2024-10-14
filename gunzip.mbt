@@ -58,7 +58,7 @@ pub fn Header::new() -> Header {
   { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
 }
 
-// A Reader is a [@flate.IOReadCloser] that can be read to retrieve
+// A Reader is an [IOReadCloser] that can be read to retrieve
 // uncompressed data from a gzip-format compressed file.
 //
 // In general, a gzip file can be a concatenation of gzip files,
@@ -74,8 +74,8 @@ pub fn Header::new() -> Header {
 // marking the end of the data.
 pub struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
-  priv mut r : @flate.IOReader
-  priv mut decompressor : @flate.IOReadCloser
+  priv mut r : IOReader
+  priv mut decompressor : IOReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
   priv mut size : UInt // Uncompressed size (section 2.3.1)
   priv mut buf : Array[Byte] // [512]byte
@@ -88,7 +88,7 @@ pub struct Reader {
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
-fn Reader::new(r : @flate.IOReader) -> Reader!Error {
+fn Reader::new(r : IOReader) -> Reader!Error {
   let z = {
     header: Header::new(),
     r,
@@ -105,7 +105,7 @@ fn Reader::new(r : @flate.IOReader) -> Reader!Error {
 // Reset discards the [Reader] z's state and makes it equivalent to the
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
-fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
+fn reset(self : Reader, r : IOReader) -> Reader!Error {
   self.r = r
   self.digest = @crc32.Digest::new()
   self.size = 0
@@ -178,7 +178,7 @@ fn read_header(self : Reader) -> Header!Error {
   // side of caution, Go interprets this to mean "zero or more".
   // Thus, it is okay to return io.EOF here.
   let hdr = Header::new()
-  let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:10])
+  let _ = self.r.read_full!(self.buf[:10])
   if self.buf[0] != gzip_id1 ||
     self.buf[1] != gzip_id2 ||
     self.buf[2] != gzip_deflate {
@@ -201,7 +201,7 @@ fn read_header(self : Reader) -> Header!Error {
   }
   if (flg & flag_extra) != 0 {
     try {
-      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:2])
+      let _ = self.r.read_full!(self.buf[:2])
 
     } catch {
       e => raise no_eof(e)
@@ -210,7 +210,7 @@ fn read_header(self : Reader) -> Header!Error {
     let data_size = le_uint16(self.buf[:2]).reinterpret_as_int()
     let data = Array::make(data_size, b'\x00')
     try {
-      let _ = self.r.read_full!(@flate.Slice::new(data))
+      let _ = self.r.read_full!(data[:])
 
     } catch {
       e => raise no_eof(e)
@@ -238,7 +238,7 @@ fn read_header(self : Reader) -> Header!Error {
   }
   if (flg & flag_hdr_crc) != 0 {
     try {
-      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:2])
+      let _ = self.r.read_full!(self.buf[:2])
 
     } catch {
       e => raise no_eof(e)
@@ -264,8 +264,8 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
   (b[3].to_uint() << 24)
 }
 
-// Read implements [@flate.IOReadCloser], reading uncompressed bytes from its underlying [Reader].
-fn read(self : Reader, p : @flate.Slice[Byte]) -> Int!Error {
+// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
+fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
   if not(self.err.is_empty()) {
     raise self.err.unwrap()
   }
@@ -285,7 +285,7 @@ fn read(self : Reader, p : @flate.Slice[Byte]) -> Int!Error {
 
     // Finished file; check checksum and size.
     try {
-      let _ = self.r.read_full!(@flate.Slice::new(self.buf)[:8])
+      let _ = self.r.read_full!(self.buf[:8])
 
     } catch {
       e =>
