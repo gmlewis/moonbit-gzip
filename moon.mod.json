@@ -4,7 +4,7 @@
   "deps": {
     "gmlewis/base64": "0.9.0",
     "gmlewis/crc32": "0.3.0",
-    "gmlewis/flate": "0.10.0",
+    "gmlewis/flate": "0.11.0",
     "moonbitlang/x": "0.4.10"
   },
   "readme": "README.md",

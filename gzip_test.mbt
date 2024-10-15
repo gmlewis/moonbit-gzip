@@ -16,23 +16,12 @@ test "empty payload still forms a valid GZIP stream" {
 
   //
   let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
-  // r, err := NewReader(buf)
-  // if err != nil {
-  // 	t.Fatalf("NewReader: %v", err)
-  // }
-  // if want := (Header{OS: 255}); !reflect.DeepEqual(r.Header, want) {
-  // 	t.Errorf("Header mismatch:\ngot  %#v\nwant %#v", r.Header, want)
-  // }
-  // b, err := io.ReadAll(r)
-  // if err != nil {
-  // 	t.Fatalf("ReadAll: %v", err)
-  // }
-  // if len(b) != 0 {
-  // 	t.Fatalf("got %d bytes, want 0", len(b))
-  // }
-  // if err := r.Close(); err != nil {
-  // 	t.Fatalf("Reader.Close: %v", err)
-  // }
+  inspect!(r.header.os.to_int(), content="255")
+
+  //
+  let b = r.read_all!()
+  inspect!(b.length(), content="0")
+  r.close!()
 }
 
 fn dump_buf(buf : @buffer.Buffer) -> String {

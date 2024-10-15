@@ -395,7 +395,7 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
 // Close closes the [Reader]. It does not close the underlying [io.Reader].
 // In order for the GZIP checksum to be verified, the reader must be
 // fully consumed until the [IOEOF].
-fn close(self : Reader) -> Unit!Error {
+pub fn close(self : Reader) -> Unit!Error {
   try {
     self.decompressor.close!()
   } catch {

@@ -111,11 +111,7 @@ fn write_string(self : Writer, s : String) -> Unit!Error {
 }
 
 fn dump_av(buf : ArrayView[Byte]) -> String {
-  buf
-  .iter()
-  .map(fn(b) { b.to_int() })
-  .to_string()
-  .replace_all(old=",", new="")
+  buf.iter().map(fn(b) { b.to_int() }).to_string().replace_all(old=",", new="")
 }
 
 // write writes a compressed form of p to the underlying [io.Writer]. The
@@ -317,4 +313,26 @@ pub fn close(self : Writer) -> Unit!Error {
     ][:]
   let _ = self.w.write!(footer)
 
+}
+
+let io_read_buf_size = 1024
+
+pub fn read_all(self : Reader) -> Bytes!Error {
+  let buf = @buffer.new()
+  let b = Array::make(io_read_buf_size, b'\x00')
+  for {
+    let n = try {
+      self.read!(b[:])
+    } catch {
+      @flate.IOEOF => 0
+      e => raise e
+    }
+    if n == 0 {
+      break
+    }
+    for i = 0; i < n; i = i + 1 {
+      buf.write_byte(b[i])
+    }
+  }
+  buf.to_bytes()
 }
