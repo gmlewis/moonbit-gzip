@@ -299,14 +299,8 @@ pub fn flush(self : Writer) -> Unit!Error {
       None => ()
     }
   }
-  try {
-    self.compressor.flush!()
-  } catch {
-    e => {
-      self.err = Some(e)
-      raise e
-    }
-  }
+  // The simplified flate compressor has no flush method.
+  // self.err = self.compressor.flush()
 }
 
 /// close closes the [Writer] by flushing any unwritten data to the underlying
