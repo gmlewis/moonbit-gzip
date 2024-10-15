@@ -185,39 +185,3 @@ test "multiple gzip files concatenated form a valid gzip file" {
   let data = r.read_all!()
   assert_eq!(data, b"hello world\n")
 }
-
-// type limitedWriter struct {
-// 	N int
-// }
-
-// func (l *limitedWriter) Write(p []byte) (n int, err error) {
-// 	if n := l.N; n < len(p) {
-// 		l.N = 0
-// 		return n, io.ErrShortWrite
-// 	}
-// 	l.N -= len(p)
-// 	return len(p), nil
-// }
-
-// test "write should never return more bytes than the input slice" {
-// 	msg := []byte("a")
-
-// 	for lim := 2; lim < 20; lim++ {
-// 		z := NewWriter(&limitedWriter{lim})
-// 		if n, _ := z.Write(msg); n > len(msg) {
-// 			t.Errorf("Write() = %d, want %d or less", n, len(msg))
-// 		}
-
-// 		z.Reset(&limitedWriter{lim})
-// 		z.Header = Header{
-// 			Comment: "comment",
-// 			Extra:   []byte("extra"),
-// 			ModTime: time.Now(),
-// 			Name:    "name",
-// 			OS:      1,
-// 		}
-// 		if n, _ := z.Write(msg); n > len(msg) {
-// 			t.Errorf("Write() = %d, want %d or less", n, len(msg))
-// 		}
-// 	}
-// }

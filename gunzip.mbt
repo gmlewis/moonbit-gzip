@@ -116,7 +116,7 @@ pub fn Reader::new(r : @flate.IOReader) -> Reader!Error {
 // Reset discards the [Reader] z's state and makes it equivalent to the
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
-fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
+pub fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
   gmldbg("GML: gunzip.go: (z *Reader) Reset(r io.Reader) error {")
   gmldbg("GML: gunzip.go: Reset: A")
   self.r = r
