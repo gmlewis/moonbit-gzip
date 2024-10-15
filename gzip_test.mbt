@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 // This package is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gzip_test.go
 // which has the copyright notice:
@@ -6,12 +8,14 @@
 // license that can be found in the LICENSE file.
 
 test "empty payload still forms a valid GZIP stream" {
-  let in_buf = @buffer.Buffer::new()
-  @gzip.Writer::new(@flate.IOWriter::from_buffer(in_buf)).close!()
+  let buf = @buffer.Buffer::new()
+  @gzip.Writer::new(@flate.IOWriter::from_buffer(buf)).close!()
 
   //
-  let out_buf = @buffer.Buffer::new()
-  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(out_buf))
+  println("GML: TestEmpty: got=\{dump_buf(buf)}")
+
+  //
+  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
   // r, err := NewReader(buf)
   // if err != nil {
   // 	t.Fatalf("NewReader: %v", err)
@@ -29,6 +33,15 @@ test "empty payload still forms a valid GZIP stream" {
   // if err := r.Close(); err != nil {
   // 	t.Fatalf("Reader.Close: %v", err)
   // }
+}
+
+fn dump_buf(buf : @buffer.Buffer) -> String {
+  buf
+  .to_bytes()
+  .to_array()
+  .map(fn(b) { b.to_int() })
+  .to_string()
+  .replace_all(old=",", new="")
 }
 
 // test "gzipping and then gunzipping is the identity function" {
