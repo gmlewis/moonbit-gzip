@@ -171,24 +171,20 @@ test "writer flush" {
   assert_eq!(buf.to_bytes().length(), 50)
 }
 
-// test "multiple gzip files concatenated form a valid gzip file" {
-// 	var buf bytes.Buffer
-// 	w := NewWriter(&buf)
-// 	w.Write([]byte("hello "))
-// 	w.Close()
-// 	w = NewWriter(&buf)
-// 	w.Write([]byte("world\n"))
-// 	w.Close()
+test "multiple gzip files concatenated form a valid gzip file" {
+  let buf = @buffer.Buffer::new()
+  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+  let _ = w.write!(b"hello ".to_array()[:])
+  w.close!()
+  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+  let _ = w.write!(b"world\n".to_array()[:])
+  w.close!()
 
-// 	r, err := NewReader(&buf)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	data, err := io.ReadAll(r)
-// 	if string(data) != "hello world\n" || err != nil {
-// 		t.Fatalf("ReadAll = %q, %v, want %q, nil", data, err, "hello world")
-// 	}
-// }
+  //
+  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+  let data = r.read_all!()
+  assert_eq!(data, b"hello world\n")
+}
 
 // type limitedWriter struct {
 // 	N int
