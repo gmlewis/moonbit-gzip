@@ -7,7 +7,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-let broken : Map[Int, Bool] = { 1: false }
+let broken : Map[Int, Bool] = { 20: true }
 
 test "empty payload still forms a valid GZIP stream" {
   @gzip.gml_debug.val = broken[0].or_default()
@@ -74,56 +74,59 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   r.close!()
 }
 
-// test "metadata that is representable in Latin-1 survives a round trip" {
-// 	testCases := []struct {
-// 		name string
-// 		ok   bool
-// 	}{
-// 		{"", true},
-// 		{"ASCII is OK", true},
-// 		{"unless it contains a NUL\x00", false},
-// 		{"no matter where \x00 occurs", false},
-// 		{"\x00\x00\x00", false},
-// 		{"Látin-1 also passes (U+00E1)", true},
-// 		{"but LĀtin Extended-A (U+0100) does not", false},
-// 		{"neither does 日本語", false},
-// 		{"invalid UTF-8 also \xffails", false},
-// 		{"\x00 as does Látin-1 with NUL", false},
-// 	}
-// 	for _, tc := range testCases {
-// 		buf := new(bytes.Buffer)
+test "latin1 roundtrip metadata that is representable in Latin-1 survives a round trip" {
+  @gzip.gml_debug.val = broken[2].or_default()
 
-// 		w := NewWriter(buf)
-// 		w.Name = tc.name
-// 		err := w.Close()
-// 		if (err == nil) != tc.ok {
-// 			t.Errorf("Writer.Close: name = %q, err = %v", tc.name, err)
-// 			continue
-// 		}
-// 		if !tc.ok {
-// 			continue
-// 		}
+  // (name : String, ok : Bool)
+  let test_cases = [
+    ("", true),
+    ("ASCII is OK", true),
+    ("unless it contains a NUL\x00", false),
+    ("no matter where \x00 occurs", false),
+    ("\x00\x00\x00", false),
+    ("Látin-1 also passes (U+00E1)", true),
+    ("but LĀtin Extended-A (U+0100) does not", false),
+    ("neither does 日本語", false),
+    ("invalid UTF-8 also \xffails", false),
+    ("\x00 as does Látin-1 with NUL", false),
+  ]
+  for tc in test_cases {
+    @gzip.gmldbg("test '\{tc.0}', tc.1=\{tc.1}...")
+    let buf = @buffer.Buffer::new()
 
-// 		r, err := NewReader(buf)
-// 		if err != nil {
-// 			t.Errorf("NewReader: %v", err)
-// 			continue
-// 		}
-// 		_, err = io.ReadAll(r)
-// 		if err != nil {
-// 			t.Errorf("ReadAll: %v", err)
-// 			continue
-// 		}
-// 		if r.Name != tc.name {
-// 			t.Errorf("name is %q, want %q", r.Name, tc.name)
-// 			continue
-// 		}
-// 		if err := r.Close(); err != nil {
-// 			t.Errorf("Reader.Close: %v", err)
-// 			continue
-// 		}
-// 	}
-// }
+    //
+    let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+    w.header.name = tc.0
+    try {
+      w.close!()
+      if not(tc.1) {
+        @gzip.gmldbg("@gzip.Writer.close: name='\{tc.0}', got ok, want error")
+      }
+      assert_true!(tc.1)
+    } catch {
+      _ => {
+        if tc.1 {
+          @gzip.gmldbg("@gzip.Writer.close: name='\{tc.0}', got error, want ok")
+        }
+        assert_false!(tc.1)
+      }
+    }
+    if not(tc.1) {
+      continue
+    }
+
+    //
+    @gzip.gmldbg(
+      "GML: TestLatin1RoundTrip: name='\{tc.0}', got=\{dump_buf(buf)}",
+    )
+
+    //
+    let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+    let _ = r.read_all!()
+    assert_eq!(r.header.name, tc.0)
+    r.close!()
+  }
+}
 
 // func TestWriterFlush(t *testing.T) {
 // 	buf := new(bytes.Buffer)

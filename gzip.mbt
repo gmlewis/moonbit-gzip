@@ -111,7 +111,7 @@ fn write_string(self : Writer, s : String) -> Unit!Error {
   let mut needconv = false
   for v in b {
     gmldbg("GML: gzip.go: writeString: A: v=\{v}")
-    if v == 0 || v > 0xff {
+    if v == 0 { // || v > 0xff {
       raise GzipError("@gzip.write_string: non-Latin-1 header string")
     }
     if v > 0x7f {
