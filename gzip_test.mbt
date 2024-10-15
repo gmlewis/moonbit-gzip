@@ -7,12 +7,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+let broken : Map[Int, Bool] = { 1: false }
+
 test "empty payload still forms a valid GZIP stream" {
+  @gzip.gml_debug.val = broken[0].or_default()
+
+  //
   let buf = @buffer.Buffer::new()
   @gzip.Writer::new(@flate.IOWriter::from_buffer(buf)).close!()
 
   //
-  println("GML: TestEmpty: got=\{dump_buf(buf)}")
+  @gzip.gmldbg("GML: TestEmpty: got=\{dump_buf(buf)}")
 
   //
   let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
@@ -33,48 +38,41 @@ fn dump_buf(buf : @buffer.Buffer) -> String {
   .replace_all(old=",", new="")
 }
 
-// test "gzipping and then gunzipping is the identity function" {
-// 	buf := new(bytes.Buffer)
+test "roundtrip gzipping and then gunzipping is the identity function" {
+  @gzip.gml_debug.val = broken[1].or_default()
 
-// 	w := NewWriter(buf)
-// 	w.Comment = "comment"
-// 	w.Extra = []byte("extra")
-// 	w.ModTime = time.Unix(1e8, 0)
-// 	w.Name = "name"
-// 	if _, err := w.Write([]byte("payload")); err != nil {
-// 		t.Fatalf("Write: %v", err)
-// 	}
-// 	if err := w.Close(); err != nil {
-// 		t.Fatalf("Writer.Close: %v", err)
-// 	}
+  //
+  let buf = @buffer.Buffer::new()
+  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
 
-// 	r, err := NewReader(buf)
-// 	if err != nil {
-// 		t.Fatalf("NewReader: %v", err)
-// 	}
-// 	b, err := io.ReadAll(r)
-// 	if err != nil {
-// 		t.Fatalf("ReadAll: %v", err)
-// 	}
-// 	if string(b) != "payload" {
-// 		t.Fatalf("payload is %q, want %q", string(b), "payload")
-// 	}
-// 	if r.Comment != "comment" {
-// 		t.Fatalf("comment is %q, want %q", r.Comment, "comment")
-// 	}
-// 	if string(r.Extra) != "extra" {
-// 		t.Fatalf("extra is %q, want %q", r.Extra, "extra")
-// 	}
-// 	if r.ModTime.Unix() != 1e8 {
-// 		t.Fatalf("mtime is %d, want %d", r.ModTime.Unix(), uint32(1e8))
-// 	}
-// 	if r.Name != "name" {
-// 		t.Fatalf("name is %q, want %q", r.Name, "name")
-// 	}
-// 	if err := r.Close(); err != nil {
-// 		t.Fatalf("Reader.Close: %v", err)
-// 	}
-// }
+  //
+  w.header.comment = "comment"
+  w.header.extra = b"extra".to_array()
+  let t = @time.PlainDateTime::from_unix_second!(
+    100_000_000, 0, @time.utc_offset,
+  )
+  w.header.mod_time = Some(t)
+  w.header.name = "name"
+  let _ = w.write!(b"payload".to_array()[:])
+  w.close!()
+
+  //
+  @gzip.gmldbg("GML: TestRoundTrip: got=\{dump_buf(buf)}")
+
+  //
+  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+  inspect!(r.header.os.to_int(), content="255")
+
+  //
+  let b = r.read_all!()
+  assert_eq!(b, b"payload")
+  assert_eq!(r.header.comment, "comment")
+  assert_eq!(r.header.extra, b"extra".to_array())
+  guard let Some(t) = r.header.mod_time
+  assert_eq!(t.to_unix_second(), 100_000_000)
+  assert_eq!(r.header.name, "name")
+  r.close!()
+}
 
 // test "internal functions for converting to and from Latin-1" {
 // 	latin1 := []byte{0xc4, 'u', 0xdf, 'e', 'r', 'u', 'n', 'g', 0}

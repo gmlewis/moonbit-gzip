@@ -1,5 +1,13 @@
 // -*- compile-command: "moon test --target js > got.txt"; -*-
 
+pub let gml_debug : Ref[Bool] = { val: false }
+
+pub fn gmldbg(s : String) -> Unit {
+  if gml_debug.val {
+    println(s)
+  }
+}
+
 /// This package is based on the Go implementation found here:
 /// https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gzip.go
 /// which has the copyright notice:
@@ -45,10 +53,10 @@ pub type! GzipError String derive(Show)
 /// Callers that wish to set the fields in Writer.Header must do so before
 /// the first call to Write, Flush, or Close.
 pub fn Writer::new(w : @flate.IOWriter) -> Writer {
-  println(
+  gmldbg(
     "GML: gzip.go: NewWriterLevel(w io.Writer, level int) (*Writer, error) {",
   )
-  println("GML: gzip.go: (z *Writer) init(w io.Writer, level int) {")
+  gmldbg("GML: gzip.go: (z *Writer) init(w io.Writer, level int) {")
   let header = Header::new()
   let buf = Array::make(10, b'\x00')
   {
@@ -117,7 +125,7 @@ fn dump_av(buf : ArrayView[Byte]) -> String {
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
 pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
-  println("GML: gzip.go: (z *Writer) Write(p=\{dump_av(p)}) (int, error) {")
+  gmldbg("GML: gzip.go: (z *Writer) Write(p=\{dump_av(p)}) (int, error) {")
   match self.err {
     Some(e) => raise e
     None => ()
@@ -129,21 +137,21 @@ pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
     self.buf[0] = gzip_id1
     self.buf[1] = gzip_id2
     self.buf[2] = gzip_deflate
-    println("GML: gzip.go: Write: header: A")
+    gmldbg("GML: gzip.go: Write: header: A")
     match self.header.extra {
       [] => ()
       _ => {
         self.buf[3] = b'\x04'
-        println("GML: gzip.go: Write: header: B")
+        gmldbg("GML: gzip.go: Write: header: B")
       }
     }
     if self.header.name != "" {
       self.buf[3] = self.buf[3] | b'\x08'
-      println("GML: gzip.go: Write: header: C")
+      gmldbg("GML: gzip.go: Write: header: C")
     }
     if self.header.comment != "" {
       self.buf[3] = self.buf[3] | b'\x10'
-      println("GML: gzip.go: Write: header: D")
+      gmldbg("GML: gzip.go: Write: header: D")
     }
     match self.header.mod_time {
       Some(t) => {
@@ -151,7 +159,7 @@ pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
         // Section 2.3.1, the zero value for MTIME means that the
         // modified time is not set.
         le_put_uint32(self.buf, 4, t)
-        println("GML: gzip.go: Write: header: E")
+        gmldbg("GML: gzip.go: Write: header: E")
       }
       None => ()
     }
@@ -160,89 +168,89 @@ pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
     //   self.buf[8] = b'\x02'
     // } else if self.level == best_speed {
     self.buf[8] = b'\x04'
-    println("GML: gzip.go: Write: header: G")
+    gmldbg("GML: gzip.go: Write: header: G")
     // }
     self.buf[9] = self.header.os
-    println("GML: gzip.go: Write: header: H")
+    gmldbg("GML: gzip.go: Write: header: H")
     let b = self.buf[:]
     let _ = try {
       self.w.write!(b)
     } catch {
       e => {
         self.err = Some(e)
-        println("GML: gzip.go: Write: header: I")
+        gmldbg("GML: gzip.go: Write: header: I")
         raise e
       }
     }
-    println("GML: gzip.go: Write: header: J")
+    gmldbg("GML: gzip.go: Write: header: J")
     match self.header.extra {
       [] => ()
       b => {
-        println("GML: gzip.go: Write: header: K")
+        gmldbg("GML: gzip.go: Write: header: K")
         try {
           self.write_bytes!(b[:])
         } catch {
           e => {
             self.err = Some(e)
-            println("GML: gzip.go: Write: header: L")
+            gmldbg("GML: gzip.go: Write: header: L")
             raise e
           }
         }
-        println("GML: gzip.go: Write: header: M")
+        gmldbg("GML: gzip.go: Write: header: M")
       }
     }
-    println("GML: gzip.go: Write: header: N")
+    gmldbg("GML: gzip.go: Write: header: N")
     if self.header.name != "" {
-      println("GML: gzip.go: Write: header: O")
+      gmldbg("GML: gzip.go: Write: header: O")
       try {
         self.write_string!(self.header.name)
       } catch {
         e => {
           self.err = Some(e)
-          println("GML: gzip.go: Write: header: P")
+          gmldbg("GML: gzip.go: Write: header: P")
           raise e
         }
       }
-      println("GML: gzip.go: Write: header: Q")
+      gmldbg("GML: gzip.go: Write: header: Q")
     }
-    println("GML: gzip.go: Write: header: R")
+    gmldbg("GML: gzip.go: Write: header: R")
     if self.header.comment != "" {
-      println("GML: gzip.go: Write: header: S")
+      gmldbg("GML: gzip.go: Write: header: S")
       try {
         self.write_string!(self.header.comment)
       } catch {
         e => {
           self.err = Some(e)
-          println("GML: gzip.go: Write: header: T")
+          gmldbg("GML: gzip.go: Write: header: T")
           raise e
         }
       }
-      println("GML: gzip.go: Write: header: U")
+      gmldbg("GML: gzip.go: Write: header: U")
     }
-    println("GML: gzip.go: Write: header: V")
+    gmldbg("GML: gzip.go: Write: header: V")
     // if z.compressor == nil {
     // 	log.Printf("GML: gzip.go: Write: header: W")
     // 	z.compressor, _ = flate.NewWriter(z.w, z.level)
     // }
-    println("GML: gzip.go: Write: header: X")
+    gmldbg("GML: gzip.go: Write: header: X")
   }
-  println("GML: gzip.go: Write: header: Y")
+  gmldbg("GML: gzip.go: Write: header: Y")
   self.size += p.length().reinterpret_as_uint()
-  println("GML: gzip.go: Write: header: Y1: z.size=\{self.size}")
+  gmldbg("GML: gzip.go: Write: header: Y1: z.size=\{self.size}")
   let sum = @crc32.Digest::new()
   for b in p {
     sum.write(b)
   }
   self.digest = sum.digest()
-  println("GML: gzip.go: Write: header: Y2: z.digest=\{self.digest}")
+  gmldbg("GML: gzip.go: Write: header: Y2: z.digest=\{self.digest}")
   try {
     let n = self.compressor.write!(p)
-    println("GML: gzip.go: Write: header: Z: n=\{n}")
+    gmldbg("GML: gzip.go: Write: header: Z: n=\{n}")
     n
   } catch {
     e => {
       self.err = Some(e)
-      println("GML: gzip.go: Write: header: Z: err=???")
+      gmldbg("GML: gzip.go: Write: header: Z: err=???")
       raise e
     }
   }
@@ -278,7 +286,7 @@ pub fn flush(self : Writer) -> Unit!Error {
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
 pub fn close(self : Writer) -> Unit!Error {
-  println("GML: gzip.go: (z *Writer) Close() error {")
+  gmldbg("GML: gzip.go: (z *Writer) Close() error {")
   match self.err {
     Some(e) => raise e
     None => ()
