@@ -311,13 +311,17 @@ test "decompressor by resetting the reader" {
   // Keep resetting this reader.
   // It is intended behavior that Reader.Reset can be called on a zero-value
   // Reader and be the equivalent as if NewReader was used instead.
+  let r1 = @buffer.Buffer::new()
+    |> @flate.IOReader::from_buffer()
+    |> @gzip.Reader::new()
+
+  //
   let b = @buffer.Buffer::new()
-  let r1 = @gzip.Reader::new!(@flate.IOReader::from_buffer(b))
   for tt in gunzip_tests {
     // Test NewReader.
     let inp = @buffer.Buffer::new()
     inp.write_bytes(Bytes::from_array(tt.gzip))
-    let r2 = @gzip.Reader::new!(@flate.IOReader::from_buffer(inp))
+    let r2 = @gzip.Reader::new(@flate.IOReader::from_buffer(inp))
     // defer r2.Close()
     assert_eq!(tt.name, r2.header.name)
     b.reset()
@@ -333,7 +337,7 @@ test "decompressor by resetting the reader" {
           _ => fail!("\{tt.desc} got error, but expected no error")
         }
     }
-    let s = b.to_string()
+    let s = @base64.bytes2str(b.to_bytes())
     assert_eq!(s, tt.raw)
 
     // Test Reader.Reset.
@@ -354,7 +358,7 @@ test "decompressor by resetting the reader" {
           _ => fail!("\{tt.desc} got error, but expected no error")
         }
     }
-    let s = b.to_string()
+    let s = @base64.bytes2str(b.to_bytes())
     assert_eq!(s, tt.raw)
   }
 }

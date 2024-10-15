@@ -20,7 +20,7 @@ test "empty payload still forms a valid GZIP stream" {
   @gzip.gmldbg("GML: TestEmpty: got=\{dump_buf(buf)}")
 
   //
-  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
   inspect!(r.header.os.to_int(), content="255")
 
   //
@@ -60,7 +60,7 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   @gzip.gmldbg("GML: TestRoundTrip: got=\{dump_buf(buf)}")
 
   //
-  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
   inspect!(r.header.os.to_int(), content="255")
 
   //
@@ -121,7 +121,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     )
 
     //
-    let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+    let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
     let _ = r.read_all!()
     assert_eq!(r.header.name, tc.0)
     r.close!()
@@ -181,7 +181,7 @@ test "multiple gzip files concatenated form a valid gzip file" {
   w.close!()
 
   //
-  let r = @gzip.Reader::new!(@flate.IOReader::from_buffer(buf))
+  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
   let data = r.read_all!()
   assert_eq!(data, b"hello world\n")
 }

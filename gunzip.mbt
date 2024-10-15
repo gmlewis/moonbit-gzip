@@ -89,7 +89,7 @@ pub struct Reader {
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
-pub fn Reader::new(r : @flate.IOReader) -> Reader!Error {
+pub fn Reader::new(r : @flate.IOReader) -> Reader {
   gmldbg("GML: gunzip.go: NewReader(r io.Reader) (*Reader, error) {")
   let z = {
     header: Header::new(),
@@ -106,10 +106,9 @@ pub fn Reader::new(r : @flate.IOReader) -> Reader!Error {
     gmldbg("GML: gunzip.go: NewReader: no err")
     reader
   } catch {
-    e => {
-      gmldbg("GML: gunzip.go: NewReader: err=???")
-      raise e
-    }
+    _ =>
+      // gmldbg("GML: gunzip.go: NewReader: err=???")
+      z
   }
 }
 
