@@ -7,10 +7,6 @@
 /// Use of this source code is governed by a BSD-style
 /// license that can be found in the LICENSE file.
 
-// Copyright 2009 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 struct GunzipTest {
   name : String
   desc : String
@@ -84,35 +80,37 @@ let gunzip_tests : Array[GunzipTest] = [
   { // has dynamic huffman blocks
     name: "gettysburg",
     desc: "gettysburg",
-    raw: "  Four score and seven years ago our fathers brought forth on\n" +
-    "this continent, a new nation, conceived in Liberty, and dedicated\n" +
-    "to the proposition that all men are created equal.\n" +
-    "  Now we are engaged in a great Civil War, testing whether that\n" +
-    "nation, or any nation so conceived and so dedicated, can long\n" +
-    "endure.\n" +
-    "  We are met on a great battle-field of that war.\n" +
-    "  We have come to dedicate a portion of that field, as a final\n" +
-    "resting place for those who here gave their lives that that\n" +
-    "nation might live.  It is altogether fitting and proper that\n" +
-    "we should do this.\n" +
-    "  But, in a larger sense, we can not dedicate — we can not\n" +
-    "consecrate — we can not hallow — this ground.\n" +
-    "  The brave men, living and dead, who struggled here, have\n" +
-    "consecrated it, far above our poor power to add or detract.\n" +
-    "The world will little note, nor long remember what we say here,\n" +
-    "but it can never forget what they did here.\n" +
-    "  It is for us the living, rather, to be dedicated here to the\n" +
-    "unfinished work which they who fought here have thus far so\n" +
-    "nobly advanced.  It is rather for us to be here dedicated to\n" +
-    "the great task remaining before us — that from these honored\n" +
-    "dead we take increased devotion to that cause for which they\n" +
-    "gave the last full measure of devotion —\n" +
-    "  that we here highly resolve that these dead shall not have\n" +
-    "died in vain — that this nation, under God, shall have a new\n" +
-    "birth of freedom — and that government of the people, by the\n" +
-    "people, for the people, shall not perish from this earth.\n" +
-    "\n" +
-    "Abraham Lincoln, November 19, 1863, Gettysburg, Pennsylvania\n",
+    raw: #|  Four score and seven years ago our fathers brought forth on
+         #|this continent, a new nation, conceived in Liberty, and dedicated
+         #|to the proposition that all men are created equal.
+         #|  Now we are engaged in a great Civil War, testing whether that
+         #|nation, or any nation so conceived and so dedicated, can long
+         #|endure.
+         #|  We are met on a great battle-field of that war.
+         #|  We have come to dedicate a portion of that field, as a final
+         #|resting place for those who here gave their lives that that
+         #|nation might live.  It is altogether fitting and proper that
+         #|we should do this.
+         #|  But, in a larger sense, we can not dedicate — we can not
+         #|consecrate — we can not hallow — this ground.
+         #|  The brave men, living and dead, who struggled here, have
+         #|consecrated it, far above our poor power to add or detract.
+         #|The world will little note, nor long remember what we say here,
+         #|but it can never forget what they did here.
+         #|  It is for us the living, rather, to be dedicated here to the
+         #|unfinished work which they who fought here have thus far so
+         #|nobly advanced.  It is rather for us to be here dedicated to
+         #|the great task remaining before us — that from these honored
+         #|dead we take increased devotion to that cause for which they
+         #|gave the last full measure of devotion —
+         #|  that we here highly resolve that these dead shall not have
+         #|died in vain — that this nation, under God, shall have a new
+         #|birth of freedom — and that government of the people, by the
+         #|people, for the people, shall not perish from this earth.
+         #|
+         #|Abraham Lincoln, November 19, 1863, Gettysburg, Pennsylvania
+         #|
+    ,
     gzip: [
       0x1f, 0x8b, 0x08, 0x08, 0xd1, 0x12, 0x2b, 0x4a, 0x00, 0x03, 0x67, 0x65, 0x74,
       0x74, 0x79, 0x73, 0x62, 0x75, 0x72, 0x67, 0x00, 0x65, 0x54, 0xcd, 0x6e, 0xd4,
@@ -308,6 +306,8 @@ let gunzip_tests : Array[GunzipTest] = [
 ]
 
 test "decompressor by resetting the reader" {
+  @gzip.gml_debug.val = true
+
   // Keep resetting this reader.
   // It is intended behavior that Reader.Reset can be called on a zero-value
   // Reader and be the equivalent as if NewReader was used instead.
@@ -318,6 +318,8 @@ test "decompressor by resetting the reader" {
   //
   let b = @buffer.Buffer::new()
   for tt in gunzip_tests {
+    @gzip.gmldbg("Running test: \{tt.desc}")
+
     // Test NewReader.
     let inp = @buffer.Buffer::new()
     inp.write_bytes(Bytes::from_array(tt.gzip))
@@ -331,11 +333,15 @@ test "decompressor by resetting the reader" {
         .err
 
     } catch {
-      e =>
+      e => {
+        @gzip.gmldbg(
+          "test \{tt.desc} - r2.read_all! raised ERROR: tt.err=\{tt.err}",
+        )
         match (e, tt.err) {
           (_, Some(_)) => () // expected error, got error, proceed
           _ => fail!("\{tt.desc} got error, but expected no error")
         }
+      }
     }
     let s = @base64.bytes2str(b.to_bytes())
     assert_eq!(s, tt.raw)
@@ -360,6 +366,9 @@ test "decompressor by resetting the reader" {
     }
     let s = @base64.bytes2str(b.to_bytes())
     assert_eq!(s, tt.raw)
+
+    //
+    @gzip.gmldbg("test \{tt.desc} - PASSED!!!")
   }
 }
 
