@@ -105,17 +105,37 @@ fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
 /// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
 fn write_string(self : Writer, s : String) -> Unit!Error {
+  gmldbg("GML: gzip.go: (z *Writer) writeString(s string) (err error) {")
+  let b = @base64.str2bytes(s).to_array()[:]
   // GZIP stores Latin-1 strings; error if non-Latin-1; convert if non-ASCII.
-  for v in s {
-    if v == Char::from_int(0) || v > Char::from_int(0xff) {
+  let mut needconv = false
+  for v in b {
+    gmldbg("GML: gzip.go: writeString: A: v=\{v}")
+    if v == 0 || v > 0xff {
       raise GzipError("@gzip.write_string: non-Latin-1 header string")
     }
+    if v > 0x7f {
+      needconv = true
+    }
   }
-  let b = @base64.str2bytes(s).to_array()[:]
-  let _ = self.w.write!(b)
+  if needconv {
+    let b = Array::make(s.length(), b'\x00')[:]
+    for i in 0..<s.length() {
+      let v = s[i]
+      gmldbg("GML: gzip.go: writeString: B: v=\{v}")
+      b[i] = (v.to_uint() & 0xff).to_byte()
+    }
+    let _ = self.w.write!(b)
+
+  } else {
+    gmldbg("GML: gzip.go: writeString: C: s=\{b}")
+    let _ = self.w.write!(b)
+
+  }
+
   // GZIP strings are NUL-terminated.
   let _ = self.w.write!([b'\x00'][:])
-
+  gmldbg("GML: gzip.go: writeString: D")
 }
 
 fn dump_av(buf : ArrayView[Byte]) -> String {

@@ -192,6 +192,62 @@ fn read_string(self : Reader) -> String!Error {
   raise fail!("unterminated string")
 }
 
+fn dump_buf(buf : @buffer.Buffer) -> String {
+  buf
+  .to_bytes()
+  .to_array()
+  .map(fn(b) { b.to_int() })
+  .to_string()
+  .replace_all(old=",", new="")
+}
+
+test "internal functions for converting to and from Latin-1" {
+  gml_debug.val = false
+
+  //
+  let latin1 = [b'\xc4', b'u', 0xdf, b'e', b'r', b'u', b'n', b'g', 0]
+  let utf16 = "Äußerung"
+
+  //
+  let buf = @buffer.Buffer::new(size_hint=latin1.length())
+  buf.write_bytes(Bytes::from_array(latin1))
+
+  //
+  gmldbg("GML: TestLatin1: got=\{dump_buf(buf)}")
+
+  //
+  let r = @flate.IOReader::from_buffer(buf)
+  let z = {
+    header: Header::new(),
+    r,
+    decompressor: @flate.Reader::new(r),
+    digest: @crc32.Digest::new(),
+    size: 0,
+    buf: latin1,
+    err: None,
+    multistream: false,
+  }
+  let s = z.read_string!()
+  assert_eq!(s, utf16)
+  let buf = @buffer.Buffer::new(size_hint=latin1.length())
+  let w = @flate.IOWriter::from_buffer(buf)
+  let c : Writer = {
+    header: Header::new(),
+    w,
+    level: best_speed,
+    wrote_header: false,
+    closed: false,
+    buf: [],
+    compressor: @flate.Writer::new(w),
+    digest: 0U,
+    size: 0U,
+    err: None,
+  }
+  c.write_string!(utf16)
+  let s = buf.to_bytes().to_array()
+  assert_eq!(s, latin1)
+}
+
 // readHeader reads the GZIP header according to section 2.3.1.
 // This method does not set self.err.
 fn read_header(self : Reader) -> Header!Error {

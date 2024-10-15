@@ -74,29 +74,6 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   r.close!()
 }
 
-// test "internal functions for converting to and from Latin-1" {
-// 	latin1 := []byte{0xc4, 'u', 0xdf, 'e', 'r', 'u', 'n', 'g', 0}
-// 	utf8 := "Äußerung"
-// 	z := Reader{r: bufio.NewReader(bytes.NewReader(latin1))}
-// 	s, err := z.readString()
-// 	if err != nil {
-// 		t.Fatalf("readString: %v", err)
-// 	}
-// 	if s != utf8 {
-// 		t.Fatalf("read latin-1: got %q, want %q", s, utf8)
-// 	}
-
-// 	buf := bytes.NewBuffer(make([]byte, 0, len(latin1)))
-// 	c := Writer{w: buf}
-// 	if err = c.writeString(utf8); err != nil {
-// 		t.Fatalf("writeString: %v", err)
-// 	}
-// 	s = buf.String()
-// 	if s != string(latin1) {
-// 		t.Fatalf("write utf-8: got %q, want %q", s, string(latin1))
-// 	}
-// }
-
 // test "metadata that is representable in Latin-1 survives a round trip" {
 // 	testCases := []struct {
 // 		name string
