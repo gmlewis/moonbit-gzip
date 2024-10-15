@@ -128,50 +128,48 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
   }
 }
 
-// func TestWriterFlush(t *testing.T) {
-// 	buf := new(bytes.Buffer)
+test "writer flush" {
+  let buf = @buffer.Buffer::new()
 
-// 	w := NewWriter(buf)
-// 	w.Comment = "comment"
-// 	w.Extra = []byte("extra")
-// 	w.ModTime = time.Unix(1e8, 0)
-// 	w.Name = "name"
+  //
+  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+  w.header.comment = "comment"
+  w.header.extra = b"extra".to_array()
+  let t = @time.PlainDateTime::from_unix_second!(
+    100_000_000, 0, @time.utc_offset,
+  )
+  w.header.mod_time = Some(t)
+  w.header.name = "name"
 
-// 	n0 := buf.Len()
-// 	if n0 != 0 {
-// 		t.Fatalf("buffer size = %d before writes; want 0", n0)
-// 	}
+  // no data after first flush
+  assert_eq!(buf.to_bytes().length(), 0)
 
-// 	if err := w.Flush(); err != nil {
-// 		t.Fatal(err)
-// 	}
+  //
+  w.flush!()
 
-// 	n1 := buf.Len()
-// 	if n1 == 0 {
-// 		t.Fatal("no data after first flush")
-// 	}
+  // expect data after first flush
+  assert_eq!(buf.to_bytes().length(), 30)
 
-// 	w.Write([]byte("x"))
+  //
+  let n = w.write!([b'x'][:])
+  assert_eq!(n, 1)
 
-// 	n2 := buf.Len()
-// 	if n1 != n2 {
-// 		t.Fatalf("after writing a single byte, size changed from %d to %d; want no change", n1, n2)
-// 	}
+  //
+  // after writing a single byte, want no change to size
+  assert_eq!(buf.to_bytes().length(), 30)
 
-// 	if err := w.Flush(); err != nil {
-// 		t.Fatal(err)
-// 	}
+  //
+  w.flush!()
 
-// 	n3 := buf.Len()
-// 	if n2 == n3 {
-// 		t.Fatal("Flush didn't flush any data")
-// 	}
+  // flush should have written data
+  assert_eq!(buf.to_bytes().length(), 50)
 
-// 	if err := w.Close(); err != nil {
-// 		t.Fatal(err)
-// 	}
+  //
+  w.close!()
 
-// }
+  // final output should match after flush
+  assert_eq!(buf.to_bytes().length(), 50)
+}
 
 // test "multiple gzip files concatenated form a valid gzip file" {
 // 	var buf bytes.Buffer

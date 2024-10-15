@@ -299,7 +299,14 @@ pub fn flush(self : Writer) -> Unit!Error {
       None => ()
     }
   }
-  // self.err = self.compressor.flush()
+  try {
+    self.compressor.flush!()
+  } catch {
+    e => {
+      self.err = Some(e)
+      raise e
+    }
+  }
 }
 
 /// close closes the [Writer] by flushing any unwritten data to the underlying
