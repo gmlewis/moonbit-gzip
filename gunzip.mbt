@@ -264,13 +264,13 @@ fn read_header(self : Reader) -> Header!Error {
   // side of caution, Go interprets this to mean "zero or more".
   // Thus, it is okay to return IOEOF here.
   let hdr = Header::new()
-  let _ = try {
-    self.r.read_full!(self.buf[:10])
-  } catch {
-    e => {
+  let (_, err) = self.r.read_full(self.buf[:10])
+  match err {
+    Some(e) => {
       gmldbg("GML: gunzip.go: readHeader: A: err=???")
       raise e
     }
+    _ => ()
   }
   if self.buf[0] != gzip_id1 ||
     self.buf[1] != gzip_id2 ||
@@ -299,14 +299,13 @@ fn read_header(self : Reader) -> Header!Error {
 
   //
   if (flg & flag_extra) != 0 {
-    try {
-      let _ = self.r.read_full!(self.buf[:2])
-
-    } catch {
-      e => {
+    let (_, err) = self.r.read_full(self.buf[:2])
+    match err {
+      Some(e) => {
         gmldbg("GML: gunzip.go: readHeader: C: noEOF(err)=???")
         raise no_eof(e)
       }
+      _ => ()
     }
     self.digest..write(self.buf[0]).write(self.buf[1])
     gmldbg(
@@ -314,14 +313,13 @@ fn read_header(self : Reader) -> Header!Error {
     )
     let data_size = le_uint16(self.buf[:2]).reinterpret_as_int()
     let data = Array::make(data_size, b'\x00')
-    try {
-      let _ = self.r.read_full!(data[:])
-
-    } catch {
-      e => {
+    let (_, err) = self.r.read_full(data[:])
+    match err {
+      Some(e) => {
         gmldbg("GML: gunzip.go: readHeader: D: noEOF(err)=???")
         raise no_eof(e)
       }
+      _ => ()
     }
     for i in 0..<data_size {
       self.digest.write(data[i])
@@ -354,14 +352,13 @@ fn read_header(self : Reader) -> Header!Error {
     hdr.comment = s
   }
   if (flg & flag_hdr_crc) != 0 {
-    try {
-      let _ = self.r.read_full!(self.buf[:2])
-
-    } catch {
-      e => {
+    let (_, err) = self.r.read_full(self.buf[:2])
+    match err {
+      Some(e) => {
         gmldbg("GML: gunzip.go: readHeader: G: noEOF(err)=???")
         raise no_eof(e)
       }
+      _ => ()
     }
     gmldbg(
       "GML: readHeader: D: consumed 2 bytes from reader: [\{self.buf[0]} \{self.buf[1]}]",
@@ -399,42 +396,43 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
   }
   let mut n = 0
   while n == 0 {
-    n = try {
-      self.decompressor.read!(p)
-    } catch {
-      e => {
-        self.err = Some(e) // Raise error below...
-        0
-      }
-    }
+    gmldbg("GML: gunzip.go: Read: START of for n == 0 loop")
+    let (tmpn, err) = self.decompressor.read(p)
+    n = tmpn
+    self.err = err
+    gmldbg(
+      "GML: gunzip.go: Read: A: Got \{n} bytes from z.decompressor: \{dump_av(p[:n])}, z.err=\{self.err}",
+    )
     for i in 0..<n {
       self.digest.write(p[i])
     }
+    gmldbg("GML: gunzip.go: Read: A1")
     self.size += n.reinterpret_as_uint()
-    gmldbg(
-      "GML: gunzip.go: Read: A: Got \{n} bytes from z.decompressor: \{dump_av(p[:n])}",
-    )
+    gmldbg("GML: gunzip.go: Read: A2: z.size=\{self.size}")
     match self.err {
       Some(@flate.IOEOF) => ()
       // In the normal case we return here.
-      None => return n
+      None => {
+        gmldbg("GML: gunzip.go: Read: B: n=\{n}, z.err=<nil>")
+        return n
+      }
       Some(e) => {
-        gmldbg("GML: gunzip.go: Read: B: z.err=???")
+        gmldbg("GML: gunzip.go: Read: B: (n=\{n}), z.err=\{self.err}")
         raise e
       }
     }
+    gmldbg("GML: gunzip.go: Read: B2")
 
     // Finished file; check checksum and size.
-    try {
-      let _ = self.r.read_full!(self.buf[:8])
-
-    } catch {
-      e => {
+    let (_, err) = self.r.read_full(self.buf[:8])
+    match err {
+      Some(e) => {
         let e = no_eof(e)
         self.err = Some(e)
-        gmldbg("GML: gunzip.go: Read: C: z.err=???")
+        gmldbg("GML: gunzip.go: Read: C: z.err=\{self.err}")
         raise e
       }
+      _ => ()
     }
     gmldbg(
       "GML: gunzip.go: Read: B: consumed 8 bytes from reader: \{dump_av(self.buf[:8])}",

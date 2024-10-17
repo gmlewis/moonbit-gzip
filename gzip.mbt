@@ -80,8 +80,10 @@ fn write_bytes(self : Writer, b : ArrayView[Byte]) -> Unit!Error {
   }
   le_put_uint16(self.buf, 0, b.length().reinterpret_as_uint())
   let le_len = [self.buf[0], self.buf[1]]
-  let _ = self.w.write!(le_len[:])
-  let _ = self.w.write!(b)
+  let (_, err) = self.w.write(le_len[:])
+  guard let None = err else { _ => raise err.unwrap() }
+  let (_, err) = self.w.write(b)
+  guard let None = err else { _ => raise err.unwrap() }
 
 }
 
@@ -125,16 +127,19 @@ fn write_string(self : Writer, s : String) -> Unit!Error {
       gmldbg("GML: gzip.go: writeString: B: v=\{v}")
       b[i] = (v.to_uint() & 0xff).to_byte()
     }
-    let _ = self.w.write!(b)
+    let (_, err) = self.w.write(b)
+    guard let None = err else { _ => raise err.unwrap() }
 
   } else {
     gmldbg("GML: gzip.go: writeString: C: s=\{b}")
-    let _ = self.w.write!(b)
+    let (_, err) = self.w.write(b)
+    guard let None = err else { _ => raise err.unwrap() }
 
   }
 
   // GZIP strings are NUL-terminated.
-  let _ = self.w.write!([b'\x00'][:])
+  let (_, err) = self.w.write([b'\x00'][:])
+  guard let None = err else { _ => raise err.unwrap() }
   gmldbg("GML: gzip.go: writeString: D")
 }
 
@@ -193,13 +198,12 @@ pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
     self.buf[9] = self.header.os
     gmldbg("GML: gzip.go: Write: header: H")
     let b = self.buf[:]
-    let _ = try {
-      self.w.write!(b)
-    } catch {
-      e => {
-        self.err = Some(e)
+    let (_, err) = self.w.write(b)
+    guard let None = err else {
+      _ => {
+        self.err = err
         gmldbg("GML: gzip.go: Write: header: I")
-        raise e
+        raise err.unwrap()
       }
     }
     gmldbg("GML: gzip.go: Write: header: J")
@@ -263,17 +267,17 @@ pub fn write(self : Writer, p : ArrayView[Byte]) -> Int!Error {
   }
   self.digest = sum.digest()
   gmldbg("GML: gzip.go: Write: header: Y2: z.digest=\{self.digest}")
-  try {
-    let n = self.compressor.write!(p)
-    gmldbg("GML: gzip.go: Write: header: Z: n=\{n}")
-    n
-  } catch {
-    e => {
+  let (n, err) = self.compressor.write(p)
+  gmldbg("GML: gzip.go: Write: header: Z: n=\{n}, err=\{err}")
+  match err {
+    Some(e) => {
       self.err = Some(e)
       gmldbg("GML: gzip.go: Write: header: Z: err=???")
       raise e
     }
+    _ => ()
   }
+  n
 }
 
 /// flush flushes any pending compressed data to the underlying writer.
@@ -340,7 +344,8 @@ pub fn close(self : Writer) -> Unit!Error {
       self.buf[6],
       self.buf[7],
     ][:]
-  let _ = self.w.write!(footer)
+  let (_, err) = self.w.write(footer)
+  guard let None = err else { _ => raise err.unwrap() }
 
 }
 
