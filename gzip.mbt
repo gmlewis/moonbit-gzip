@@ -138,7 +138,7 @@ fn write_string(self : Writer, s : String) -> Unit!Error {
   gmldbg("GML: gzip.go: writeString: D")
 }
 
-fn dump_av(buf : ArrayView[Byte]) -> String {
+pub fn dump_av(buf : ArrayView[Byte]) -> String {
   buf.iter().map(fn(b) { b.to_int() }).to_string().replace_all(old=",", new="")
 }
 

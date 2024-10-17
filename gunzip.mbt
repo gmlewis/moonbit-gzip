@@ -1,3 +1,5 @@
+// -*- compile-command: "moon test --target js > got.txt"; -*-
+
 // This package is based on the Go implementation found here:
 // https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gunzip.go
 // which has the copyright notice:
@@ -171,6 +173,9 @@ fn read_string(self : Reader) -> String!Error {
       raise ErrHeader
     }
     self.buf[i] = self.r.read_byte!()
+    gmldbg(
+      "GML: readString: A: consumed 1 byte from reader: [\{self.buf[i].to_int()}]",
+    )
     if self.buf[i] > 0x7f {
       need_conv = true
     }
@@ -288,6 +293,11 @@ fn read_header(self : Reader) -> Header!Error {
   for i in 0..<10 {
     self.digest.write(self.buf[i])
   }
+  gmldbg(
+    "GML: readHeader: A: consumed 10 bytes from reader: \{dump_av(self.buf[:10])}",
+  )
+
+  //
   if (flg & flag_extra) != 0 {
     try {
       let _ = self.r.read_full!(self.buf[:2])
@@ -299,6 +309,9 @@ fn read_header(self : Reader) -> Header!Error {
       }
     }
     self.digest..write(self.buf[0]).write(self.buf[1])
+    gmldbg(
+      "GML: readHeader: B: consumed 2 bytes from reader: [\{self.buf[0].to_int()} \{self.buf[1].to_int()}]",
+    )
     let data_size = le_uint16(self.buf[:2]).reinterpret_as_int()
     let data = Array::make(data_size, b'\x00')
     try {
@@ -314,6 +327,9 @@ fn read_header(self : Reader) -> Header!Error {
       self.digest.write(data[i])
     }
     hdr.extra = data
+    gmldbg(
+      "GML: readHeader: C: consumed \{data_size} bytes from reader: \{dump_av(data[:])}",
+    )
   }
   if (flg & flag_name) != 0 {
     let s = try {
@@ -347,6 +363,9 @@ fn read_header(self : Reader) -> Header!Error {
         raise no_eof(e)
       }
     }
+    gmldbg(
+      "GML: readHeader: D: consumed 2 bytes from reader: [\{self.buf[0]} \{self.buf[1]}]",
+    )
     let digest = le_uint16(self.buf[:2])
     if digest != self.digest.digest() {
       gmldbg("GML: gunzip.go: readHeader: H: err=ErrHeader")
@@ -354,6 +373,7 @@ fn read_header(self : Reader) -> Header!Error {
     }
   }
   self.digest = @crc32.Digest::new()
+  gmldbg("GML: gunzip.go: calling:  z.decompressor = flate.NewReader(z.r)")
   self.decompressor = @flate.Reader::new(self.r)
   gmldbg("GML: gunzip.go: readHeader: I: no err")
   hdr
@@ -391,6 +411,9 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
       self.digest.write(p[i])
     }
     self.size += n.reinterpret_as_uint()
+    gmldbg(
+      "GML: gunzip.go: Read: A: Got \{n} bytes from z.decompressor: \{dump_av(p[:n])}",
+    )
     match self.err {
       Some(@flate.IOEOF) => ()
       // In the normal case we return here.
@@ -413,6 +436,9 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
         raise e
       }
     }
+    gmldbg(
+      "GML: gunzip.go: Read: B: consumed 8 bytes from reader: \{dump_av(self.buf[:8])}",
+    )
     let digest = le_uint32(self.buf[:4])
     let size = le_uint32(self.buf[4:8])
     if digest != self.digest.digest() || size != self.size {

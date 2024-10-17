@@ -318,7 +318,9 @@ test "decompressor by resetting the reader" {
   //
   let b = @buffer.Buffer::new()
   for tt in gunzip_tests {
-    @gzip.gmldbg("Running test: \{tt.desc}")
+    @gzip.gmldbg(
+      "Running test: \{tt.desc} - gzip (\{tt.gzip.length()} bytes)=\{@gzip.dump_av(tt.gzip[:])}",
+    )
 
     // Test NewReader.
     let inp = @buffer.Buffer::new()
