@@ -7,29 +7,33 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-let broken : Map[Int, Bool] = { 20: true }
+typealias Slice[T] = @io.Slice[T]
+
+let broken : Map[Int, Bool] = { 1: true }
 
 test "empty payload still forms a valid GZIP stream" {
   @gzip.gml_debug.val = broken[0].or_default()
 
   //
-  let buf = @buffer.Buffer::new()
-  @gzip.Writer::new(@flate.IOWriter::from_buffer(buf)).close!()
+  let buf = @io.Buffer::new()
+  guard let None = @gzip.Writer::new(buf).close()
 
   //
   @gzip.gmldbg("GML: TestEmpty: got=\{dump_buf(buf)}")
 
   //
-  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
+  let (r, err) = @gzip.Reader::new(buf)
+  guard let None = err
   inspect!(r.header.os.to_int(), content="255")
 
   //
-  let b = r.read_all!()
+  guard let (b, None) = @io.read_all(r)
   inspect!(b.length(), content="0")
-  r.close!()
+  guard let None = r.close()
+
 }
 
-fn dump_buf(buf : @buffer.Buffer) -> String {
+fn dump_buf(buf : @io.Buffer) -> String {
   buf
   .to_bytes()
   .to_array()
@@ -42,8 +46,8 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   @gzip.gml_debug.val = broken[1].or_default()
 
   //
-  let buf = @buffer.Buffer::new()
-  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+  let buf = @io.Buffer::new()
+  let w = @gzip.Writer::new(buf)
 
   //
   w.header.comment = "comment"
@@ -53,25 +57,27 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   )
   w.header.mod_time = Some(t)
   w.header.name = "name"
-  let _ = w.write!(b"payload".to_array()[:])
-  w.close!()
+  let _ = w.write(Slice::new(b"payload".to_array()))
+  guard let None = w.close()
 
   //
   @gzip.gmldbg("GML: TestRoundTrip: got=\{dump_buf(buf)}")
 
   //
-  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
+  let (r, err) = @gzip.Reader::new(buf)
+  guard let None = err
   inspect!(r.header.os.to_int(), content="255")
 
   //
-  let b = r.read_all!()
-  assert_eq!(b, b"payload")
+  guard let (b, None) = @io.read_all(r)
+  assert_eq!(b.to_bytes(), b"payload")
   assert_eq!(r.header.comment, "comment")
   assert_eq!(r.header.extra, b"extra".to_array())
   guard let Some(t) = r.header.mod_time
   assert_eq!(t.to_unix_second(), 100_000_000)
   assert_eq!(r.header.name, "name")
-  r.close!()
+  guard let None = r.close()
+
 }
 
 test "latin1 roundtrip metadata that is representable in Latin-1 survives a round trip" {
@@ -92,13 +98,13 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
   ]
   for tc in test_cases {
     @gzip.gmldbg("test '\{tc.0}', tc.1=\{tc.1}...")
-    let buf = @buffer.Buffer::new()
+    let buf = @io.Buffer::new()
 
     //
-    let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+    let w = @gzip.Writer::new(buf)
     w.header.name = tc.0
     try {
-      w.close!()
+      guard let None = w.close()
       if not(tc.1) {
         @gzip.gmldbg("@gzip.Writer.close: name='\{tc.0}', got ok, want error")
       }
@@ -121,18 +127,20 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     )
 
     //
-    let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
-    let _ = r.read_all!()
+    let (r, err) = @gzip.Reader::new(buf)
+    guard let None = err
+    let _ = @io.read_all(r)
     assert_eq!(r.header.name, tc.0)
-    r.close!()
+    guard let None = r.close()
+
   }
 }
 
 test "writer flush" {
-  let buf = @buffer.Buffer::new()
+  let buf = @io.Buffer::new()
 
   //
-  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
+  let w = @gzip.Writer::new(buf)
   w.header.comment = "comment"
   w.header.extra = b"extra".to_array()
   let t = @time.PlainDateTime::from_unix_second!(
@@ -145,13 +153,13 @@ test "writer flush" {
   assert_eq!(buf.to_bytes().length(), 0)
 
   //
-  w.flush!()
+  guard let None = w.flush()
 
   // expect data after first flush
   assert_eq!(buf.to_bytes().length(), 30)
 
   //
-  let n = w.write!([b'x'][:])
+  guard let (n, None) = w.write(Slice::new([b'x']))
   assert_eq!(n, 1)
 
   //
@@ -159,29 +167,30 @@ test "writer flush" {
   assert_eq!(buf.to_bytes().length(), 30)
 
   //
-  w.flush!()
+  guard let None = w.flush()
 
   // since the simplified flate compressor has no flush, there is no change.
   assert_eq!(buf.to_bytes().length(), 30)
 
   //
-  w.close!()
+  guard let None = w.close()
 
   // final output should match after flush
   assert_eq!(buf.to_bytes().length(), 50)
 }
 
 test "multiple gzip files concatenated form a valid gzip file" {
-  let buf = @buffer.Buffer::new()
-  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
-  let _ = w.write!(b"hello ".to_array()[:])
-  w.close!()
-  let w = @gzip.Writer::new(@flate.IOWriter::from_buffer(buf))
-  let _ = w.write!(b"world\n".to_array()[:])
-  w.close!()
+  let buf = @io.Buffer::new()
+  let w = @gzip.Writer::new(buf)
+  guard let (_, None) = w.write(Slice::new(b"hello ".to_array()))
+  guard let None = w.close()
+  let w = @gzip.Writer::new(buf)
+  guard let (_, None) = w.write(Slice::new(b"world\n".to_array()))
+  guard let None = w.close()
 
   //
-  let r = @gzip.Reader::new(@flate.IOReader::from_buffer(buf))
-  let data = r.read_all!()
-  assert_eq!(data, b"hello world\n")
+  let (r, err) = @gzip.Reader::new(buf)
+  guard let None = err
+  guard let (data, None) = @io.read_all(r)
+  assert_eq!(data.to_bytes(), b"hello world\n")
 }

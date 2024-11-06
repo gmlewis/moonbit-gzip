@@ -3,6 +3,7 @@
     "gmlewis/base64",
     "gmlewis/crc32",
     "gmlewis/flate",
+    "gmlewis/io",
     "moonbitlang/x/time"
   ]
 }

@@ -23,25 +23,29 @@ let flag_name : Byte = b'\x08'
 
 let flag_comment : Byte = b'\x10'
 
-// ErrChecksum is returned when reading GZIP data that has an invalid checksum.
-pub type! ErrChecksum  derive(Show, Eq)
-
-// ErrHeader is returned when reading GZIP data that has an invalid header.
-pub type! ErrHeader  derive(Show, Eq)
-
-pub type! ErrUnexpectedEOF  derive(Show, Eq)
-
-pub type! IOEOF  derive(Show, Eq)
-
 // var le = binary.LittleEndian
 
-// no_eof converts IOEOF to io.ErrUnexpectedEOF.
-fn no_eof(err : Error) -> Error {
+typealias Slice[T] = @io.Slice[T]
+
+typealias IOError = @io.IOError
+
+// err_checksum is returned when reading GZIP data that has an invalid checksum.
+pub let err_checksum : IOError = IOError("gzip: invalid checksum")
+
+// err_header is returned when reading GZIP data that has an invalid header.
+pub let err_header : IOError = IOError("gzip: invalid header")
+
+pub let err_unexpected_eof : IOError = @io.err_unexpected_eof
+
+pub let ioeof : IOError = @io.eof
+
+// no_eof converts ioeof to io.err_unexpected_eof.
+fn no_eof(err : IOError) -> IOError {
   gmldbg("GML: gunzip.go: noEOF(err error) error { // err=???")
-  match err {
-    IOEOF => ErrUnexpectedEOF
-    e => e
+  if ioeof == err {
+    return err_unexpected_eof
   }
+  err
 }
 
 /// The gzip file stores a header giving metadata about the compressed file.
@@ -70,19 +74,19 @@ pub fn Header::new() -> Header {
 // Only the first header is recorded in the Reader fields.
 //
 // Gzip files store a length and checksum of the uncompressed data.
-// The Reader will return an [ErrChecksum] when [Reader.Read]
+// The Reader will return an [err_checksum] when [Reader.Read]
 // reaches the end of the uncompressed data if it does not
 // have the expected length or checksum. Clients should treat data
-// returned by [Reader.Read] as tentative until they receive the [IOEOF]
+// returned by [Reader.Read] as tentative until they receive the [ioeof]
 // marking the end of the data.
 pub struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
-  priv mut r : @flate.IOReader
-  priv mut decompressor : @flate.IOReadCloser
+  priv mut r : @flate.Reader
+  priv mut decompressor : @io.ReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
   priv mut size : UInt // Uncompressed size (section 2.3.1)
   priv mut buf : Array[Byte] // [512]byte
-  priv mut err : Error?
+  priv mut err : IOError?
   priv mut multistream : Bool
 }
 
@@ -91,7 +95,7 @@ pub struct Reader {
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
-pub fn Reader::new(r : @flate.IOReader) -> Reader {
+pub fn Reader::new(r : @flate.Reader) -> (Reader, IOError?) {
   gmldbg("GML: gunzip.go: NewReader(r io.Reader) (*Reader, error) {")
   let z = {
     header: Header::new(),
@@ -103,41 +107,27 @@ pub fn Reader::new(r : @flate.IOReader) -> Reader {
     err: None,
     multistream: false,
   }
-  try {
-    let reader = z.reset!(r)
-    gmldbg("GML: gunzip.go: NewReader: no err")
-    reader
-  } catch {
-    _ =>
-      // gmldbg("GML: gunzip.go: NewReader: err=???")
-      z
-  }
+  let err = z.reset(r)
+  gmldbg("GML: gunzip.go: NewReader: err=\{err}")
+  return (z, err)
 }
 
 // Reset discards the [Reader] z's state and makes it equivalent to the
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
-pub fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
+pub fn reset(self : Reader, r : @flate.Reader) -> IOError? {
   gmldbg("GML: gunzip.go: (z *Reader) Reset(r io.Reader) error {")
   gmldbg("GML: gunzip.go: Reset: A")
   self.r = r
   self.digest = @crc32.Digest::new()
   self.size = 0
   self.buf = Array::make(512, b'\x00')
-  self.err = None
   self.multistream = true
-  self.header = try {
-    let header = self.read_header!()
-    gmldbg("GML: gunzip.go: Reset: C: z.err=<nil>")
-    header
-  } catch {
-    e => {
-      self.err = Some(e)
-      gmldbg("GML: gunzip.go: Reset: C: z.err=\{self.err}")
-      raise e
-    }
-  }
-  self
+  let (header, err) = self.read_header()
+  self.header = header
+  self.err = err
+  gmldbg("GML: gunzip.go: Reset: C: z.err=\{self.err}")
+  return self.err
 }
 
 // Multistream controls whether the reader supports multistream files.
@@ -152,10 +142,10 @@ pub fn reset(self : Reader, r : @flate.IOReader) -> Reader!Error {
 // can be useful when reading file formats that distinguish individual gzip
 // data streams or mix gzip data streams with other data streams.
 // In this mode, when the [Reader] reaches the end of the data stream,
-// [Reader.Read] returns [IOEOF]. The underlying reader must implement [io.ByteReader]
+// [Reader.Read] returns [ioeof]. The underlying reader must implement [io.ByteReader]
 // in order to be left positioned just after the gzip stream.
 // To start the next stream, call self.Reset(r) followed by self.Multistream(false).
-// If there is no next stream, self.Reset(r) will return [IOEOF].
+// If there is no next stream, self.Reset(r) will return [ioeof].
 pub fn multistream(self : Reader, ok : Bool) -> Unit {
   gmldbg("GML: gunzip.go: (z *Reader) Multistream(ok=\{ok}) {")
   self.multistream = ok
@@ -163,40 +153,46 @@ pub fn multistream(self : Reader, ok : Bool) -> Unit {
 
 // read_string reads a NUL-terminated string from self.r.
 // It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
-// will output a string encoded using UTF-8.
+// will output a MoonBit String encoded using UTF-16.
 // This method always updates self.digest with the data read.
-fn read_string(self : Reader) -> String!Error {
+fn read_string(self : Reader) -> (String, IOError?) {
   gmldbg("GML: gunzip.go: (z *Reader) readString() (string, error) {")
   let mut need_conv = false
   for i = 0; true; i = i + 1 {
     if i >= self.buf.length() {
-      raise ErrHeader
+      return ("", Some(err_header))
     }
-    self.buf[i] = self.r.read_byte!()
+    let (b, err) = self.r.read_byte()
+    match err {
+      Some(_) => return ("", err)
+      _ => ()
+    }
+    self.buf[i] = b
     gmldbg(
       "GML: readString: A: consumed 1 byte from reader: [\{self.buf[i].to_int()}]",
     )
     if self.buf[i] > 0x7f {
       need_conv = true
     }
-    // Digest covers the NUL terminator.
+    // Digest covers the NUL terminator, so _all_ bytes are written to the digest:
     self.digest.write(self.buf[i])
     if self.buf[i] == 0 {
+      gmldbg("GML: readString: B: z.digest=\{self.digest.digest()}")
       // Strings are ISO 8859-1, Latin-1 (RFC 1952, section 2.3.1).
       if need_conv {
         let s = Array::new(capacity=i)
         for v in self.buf[:i] {
           s.push(Char::from_int(v.to_int()))
         }
-        return String::from_array(s)
+        return (String::from_array(s), None)
       }
-      return @base64.bytes2str(Bytes::from_iter(self.buf[:i].iter()))
+      return (@base64.bytes2str(Bytes::from_iter(self.buf[:i].iter())), None)
     }
   }
-  raise fail!("unterminated string")
+  ("", Some(IOError("gunzip.mbt: read_string: unexpected error: unterminated string")))
 }
 
-fn dump_buf(buf : @buffer.Buffer) -> String {
+fn dump_buf(buf : @io.Buffer) -> String {
   buf
   .to_bytes()
   .to_array()
@@ -213,14 +209,13 @@ test "internal functions for converting to and from Latin-1" {
   let utf16 = "Äußerung"
 
   //
-  let buf = @buffer.Buffer::new(size_hint=latin1.length())
-  buf.write_bytes(Bytes::from_array(latin1))
+  let r = @io.Buffer::new()
+  guard let (_, None) = r.write_bytes(Bytes::from_array(latin1))
 
   //
-  gmldbg("GML: TestLatin1: got=\{dump_buf(buf)}")
+  gmldbg("GML: TestLatin1: got=\{dump_buf(r)}")
 
   //
-  let r = @flate.IOReader::from_buffer(buf)
   let z = {
     header: Header::new(),
     r,
@@ -231,10 +226,9 @@ test "internal functions for converting to and from Latin-1" {
     err: None,
     multistream: false,
   }
-  let s = z.read_string!()
+  guard let (s, None) = z.read_string()
   assert_eq!(s, utf16)
-  let buf = @buffer.Buffer::new(size_hint=latin1.length())
-  let w = @flate.IOWriter::from_buffer(buf)
+  let w = @io.Buffer::new()
   let c : Writer = {
     header: Header::new(),
     w,
@@ -247,14 +241,14 @@ test "internal functions for converting to and from Latin-1" {
     size: 0U,
     err: None,
   }
-  c.write_string!(utf16)
-  let s = buf.to_bytes().to_array()
+  guard let None = c.write_string(utf16)
+  let s = w.to_bytes().to_array()
   assert_eq!(s, latin1)
 }
 
-// readHeader reads the GZIP header according to section 2.3.1.
+// read_header reads the GZIP header according to section 2.3.1.
 // This method does not set self.err.
-fn read_header(self : Reader) -> Header!Error {
+fn read_header(self : Reader) -> (Header, IOError?) {
   gmldbg("GML: gunzip.go: (z *Reader) readHeader() (hdr Header, err error) {")
   // RFC 1952, section 2.2, says the following:
   //	A gzip file consists of a series of "members" (compressed data sets).
@@ -262,30 +256,35 @@ fn read_header(self : Reader) -> Header!Error {
   // Other than this, the specification does not clarify whether a
   // "series" is defined as "one or more" or "zero or more". To err on the
   // side of caution, Go interprets this to mean "zero or more".
-  // Thus, it is okay to return IOEOF here.
+  // Thus, it is okay to return ioeof here.
   let hdr = Header::new()
-  let (_, err) = self.r.read_full(self.buf[:10])
+  let (_, err) = @io.read_full(self.r, Slice::new(self.buf)[:10])
   match err {
-    Some(e) => {
-      gmldbg("GML: gunzip.go: readHeader: A: err=???")
-      raise e
+    Some(_) => {
+      gmldbg("GML: gunzip.go: readHeader: A: err=\{err}")
+      return (hdr, err)
     }
     _ => ()
   }
   if self.buf[0] != gzip_id1 ||
     self.buf[1] != gzip_id2 ||
     self.buf[2] != gzip_deflate {
-    gmldbg("GML: gunzip.go: readHeader: B: err=ErrHeader")
-    raise ErrHeader
+    gmldbg("GML: gunzip.go: readHeader: B: err=err_header")
+    return (hdr, Some(err_header))
   }
   let flg = self.buf[3]
   let t = le_uint32(self.buf[4:8]).to_int64()
   if t > 0 {
     // Section 2.3.1, the zero value for MTIME means that the
     // modified time is not set.
-    hdr.mod_time = Some(
-      @time.PlainDateTime::from_unix_second!(t, 0, @time.utc_offset),
-    )
+    try {
+      let mod_time = @time.PlainDateTime::from_unix_second!(
+        t, 0, @time.utc_offset,
+      )
+      hdr.mod_time = Some(mod_time)
+    } catch {
+      _ => ()
+    }
   }
   // self.buf[8] is XFL and is currently ignored.
   hdr.os = self.buf[9]
@@ -294,30 +293,30 @@ fn read_header(self : Reader) -> Header!Error {
     self.digest.write(self.buf[i])
   }
   gmldbg(
-    "GML: readHeader: A: consumed 10 bytes from reader: \{dump_av(self.buf[:10])}",
+    "GML: readHeader: A: consumed 10 bytes from reader: \{dump_av(self.buf[:10])}, z.digest=\{self.digest.digest()}",
   )
 
   //
   if (flg & flag_extra) != 0 {
-    let (_, err) = self.r.read_full(self.buf[:2])
+    let (_, err) = @io.read_full(self.r, Slice::new(self.buf)[:2])
     match err {
       Some(e) => {
-        gmldbg("GML: gunzip.go: readHeader: C: noEOF(err)=???")
-        raise no_eof(e)
+        gmldbg("GML: gunzip.go: readHeader: C: noEOF(err)=\{err}")
+        return (hdr, Some(no_eof(e)))
       }
       _ => ()
     }
     self.digest..write(self.buf[0]).write(self.buf[1])
     gmldbg(
-      "GML: readHeader: B: consumed 2 bytes from reader: [\{self.buf[0].to_int()} \{self.buf[1].to_int()}]",
+      "GML: readHeader: B: consumed 2 bytes from reader: [\{self.buf[0].to_int()} \{self.buf[1].to_int()}], z.digest=\{self.digest.digest()}",
     )
     let data_size = le_uint16(self.buf[:2]).reinterpret_as_int()
     let data = Array::make(data_size, b'\x00')
-    let (_, err) = self.r.read_full(data[:])
+    let (_, err) = @io.read_full(self.r, Slice::new(data))
     match err {
       Some(e) => {
-        gmldbg("GML: gunzip.go: readHeader: D: noEOF(err)=???")
-        raise no_eof(e)
+        gmldbg("GML: gunzip.go: readHeader: D: noEOF(err)=\{err}")
+        return (hdr, Some(no_eof(e)))
       }
       _ => ()
     }
@@ -326,54 +325,60 @@ fn read_header(self : Reader) -> Header!Error {
     }
     hdr.extra = data
     gmldbg(
-      "GML: readHeader: C: consumed \{data_size} bytes from reader: \{dump_av(data[:])}",
+      "GML: readHeader: C: consumed \{data_size} bytes from reader: \{dump_av(data[:])}, z.digest=\{self.digest.digest()}",
     )
   }
+
+  //
   if (flg & flag_name) != 0 {
-    let s = try {
-      self.read_string!()
-    } catch {
-      e => {
-        gmldbg("GML: gunzip.go: readHeader: E: noEOF(err)=???")
-        raise no_eof(e)
+    guard let (s, None) = self.read_string() else {
+      (_, Some(e)) => {
+        gmldbg("GML: gunzip.go: readHeader: E: noEOF(err)=\{err}")
+        return (hdr, Some(no_eof(e)))
       }
     }
     hdr.name = s
   }
+
+  //
   if (flg & flag_comment) != 0 {
-    let s = try {
-      self.read_string!()
-    } catch {
-      e => {
-        gmldbg("GML: gunzip.go: readHeader: F: noEOF(err)=???")
-        raise no_eof(e)
+    guard let (s, None) = self.read_string() else {
+      (_, Some(e)) => {
+        gmldbg("GML: gunzip.go: readHeader: F: noEOF(err)=\{err}")
+        return (hdr, Some(no_eof(e)))
       }
     }
     hdr.comment = s
   }
+
+  //
   if (flg & flag_hdr_crc) != 0 {
-    let (_, err) = self.r.read_full(self.buf[:2])
+    let (_, err) = @io.read_full(self.r, Slice::new(self.buf)[:2])
     match err {
       Some(e) => {
-        gmldbg("GML: gunzip.go: readHeader: G: noEOF(err)=???")
-        raise no_eof(e)
+        gmldbg("GML: gunzip.go: readHeader: G: noEOF(err)=\{err}")
+        return (hdr, Some(no_eof(e)))
       }
       _ => ()
     }
     gmldbg(
-      "GML: readHeader: D: consumed 2 bytes from reader: [\{self.buf[0]} \{self.buf[1]}]",
+      "GML: readHeader: D1: consumed 2 bytes from reader: [\{self.buf[0].to_int()} \{self.buf[1].to_int()}]",
     )
     let digest = le_uint16(self.buf[:2])
-    if digest != self.digest.digest() {
-      gmldbg("GML: gunzip.go: readHeader: H: err=ErrHeader")
-      raise ErrHeader
+    let z_digest = self.digest.digest() & 0xffff
+    gmldbg("GML: readHeader: D2: digest=\{digest}, uint16(z.digest)=\{z_digest}")
+    if digest != z_digest {
+      gmldbg("GML: gunzip.go: readHeader: H: err=err_header")
+      return (hdr, Some(err_header))
     }
   }
+
+  //
   self.digest = @crc32.Digest::new()
   gmldbg("GML: gunzip.go: calling:  z.decompressor = flate.NewReader(z.r)")
   self.decompressor = @flate.Reader::new(self.r)
   gmldbg("GML: gunzip.go: readHeader: I: no err")
-  hdr
+  (hdr, None)
 }
 
 fn le_uint16(b : ArrayView[Byte]) -> UInt {
@@ -388,11 +393,11 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 }
 
 // Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
-fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
+pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
   gmldbg("GML: gunzip.go: (z *Reader) Read(p []byte) (n int, err error) {")
   if not(self.err.is_empty()) {
-    gmldbg("GML: gunzip.go: Read: A: z.err=???")
-    raise self.err.unwrap()
+    gmldbg("GML: gunzip.go: Read: A: z.err=\{self.err}")
+    return (0, self.err)
   }
   let mut n = 0
   while n == 0 {
@@ -401,7 +406,7 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
     n = tmpn
     self.err = err
     gmldbg(
-      "GML: gunzip.go: Read: A: Got \{n} bytes from z.decompressor: \{dump_av(p[:n])}, z.err=\{self.err}",
+      "GML: gunzip.go: Read: A: Got \{n} bytes from z.decompressor: \{dump_slice(p[:n])}, z.err=\{self.err}",
     )
     for i in 0..<n {
       self.digest.write(p[i])
@@ -409,28 +414,20 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
     gmldbg("GML: gunzip.go: Read: A1")
     self.size += n.reinterpret_as_uint()
     gmldbg("GML: gunzip.go: Read: A2: z.size=\{self.size}")
-    match self.err {
-      Some(@flate.IOEOF) => ()
+    if Some(ioeof) != self.err {
       // In the normal case we return here.
-      None => {
-        gmldbg("GML: gunzip.go: Read: B: n=\{n}, z.err=<nil>")
-        return n
-      }
-      Some(e) => {
-        gmldbg("GML: gunzip.go: Read: B: (n=\{n}), z.err=\{self.err}")
-        raise e
-      }
+      gmldbg("GML: gunzip.go: Read: B: n=\{n}, z.err=\{self.err}")
+      return (n, self.err)
     }
     gmldbg("GML: gunzip.go: Read: B2")
 
     // Finished file; check checksum and size.
-    let (_, err) = self.r.read_full(self.buf[:8])
+    let (_, err) = @io.read_full(self.r, Slice::new(self.buf)[:8])
     match err {
       Some(e) => {
-        let e = no_eof(e)
-        self.err = Some(e)
+        self.err = Some(no_eof(e))
         gmldbg("GML: gunzip.go: Read: C: z.err=\{self.err}")
-        raise e
+        return (n, self.err)
       }
       _ => ()
     }
@@ -440,9 +437,9 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
     let digest = le_uint32(self.buf[:4])
     let size = le_uint32(self.buf[4:8])
     if digest != self.digest.digest() || size != self.size {
-      self.err = Some(ErrChecksum)
-      gmldbg("GML: gunzip.go: Read: D: z.err=ErrChecksum")
-      raise ErrChecksum
+      self.err = Some(err_checksum)
+      gmldbg("GML: gunzip.go: Read: D: z.err=err_checksum")
+      return (n, self.err)
     }
     self.digest = @crc32.Digest::new()
     self.size = 0
@@ -450,42 +447,41 @@ fn read(self : Reader, p : ArrayView[Byte]) -> Int!Error {
     // File is ok; check if there is another.
     if not(self.multistream) {
       gmldbg("GML: gunzip.go: Read: E: err=io.EOF")
-      return n
+      return (n, Some(ioeof))
     }
-    self.err = None // Remove IOEOF
-    try {
-      let _ = self.read_header!()
+    self.err = None // Remove ioeof
 
-    } catch {
-      // e => raise e // return n, self.err
-      e => {
-        self.err = Some(e)
-        gmldbg("GML: gunzip.go: Read: F: z.err=???")
-        // IOEOF => return n
+    //
+    let (_, err) = self.read_header()
+    self.err = err
+    match err {
+      Some(_) => {
+        gmldbg("GML: gunzip.go: Read: F: z.err=\{self.err}")
+        return (n, self.err)
       }
+      _ => ()
     }
   }
 
   //
   gmldbg("GML: gunzip.go: Read: G: no err")
-  return n
+  return (n, None)
 }
 
 // Close closes the [Reader]. It does not close the underlying [io.Reader].
 // In order for the GZIP checksum to be verified, the reader must be
-// fully consumed until the [IOEOF].
-pub fn close(self : Reader) -> Unit!Error {
-  try {
-    self.decompressor.close!()
-  } catch {
+// fully consumed until the [ioeof].
+pub fn close(self : Reader) -> IOError? {
+  guard let None = self.decompressor.close() else {
     e => {
       gmldbg(
-        "GML: gunzip.go: (z *Reader) Close() error { return z.decompressor.Close() } // err=???",
+        "GML: gunzip.go: (z *Reader) Close() error { return z.decompressor.Close() } // err=\{e}",
       )
-      raise e
+      return e
     }
   }
   gmldbg(
     "GML: gunzip.go: (z *Reader) Close() error { return z.decompressor.Close() } // err=<nil>",
   )
+  None
 }

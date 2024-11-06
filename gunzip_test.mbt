@@ -1,18 +1,20 @@
 // -*- compile-command: "moon test --target js > got.txt"; -*-
 
-/// This package is based on the Go implementation found here:
-/// https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gunzip_test.go
-/// which has the copyright notice:
-/// Copyright 2009 The Go Authors. All rights reserved.
-/// Use of this source code is governed by a BSD-style
-/// license that can be found in the LICENSE file.
+// This package is based on the Go implementation found here:
+// https://cs.opensource.google/go/go/+/refs/tags/go1.23.0:src/compress/gzip/gunzip_test.go
+// which has the copyright notice:
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+typealias IOError = @io.IOError
 
 struct GunzipTest {
   name : String
   desc : String
   raw : String
   gzip : Array[Byte]
-  err : Error?
+  err : IOError?
 }
 
 let gunzip_tests : Array[GunzipTest] = [
@@ -81,35 +83,35 @@ let gunzip_tests : Array[GunzipTest] = [
     name: "gettysburg",
     desc: "gettysburg",
     raw: #|  Four score and seven years ago our fathers brought forth on
-         #|this continent, a new nation, conceived in Liberty, and dedicated
-         #|to the proposition that all men are created equal.
-         #|  Now we are engaged in a great Civil War, testing whether that
-         #|nation, or any nation so conceived and so dedicated, can long
-         #|endure.
-         #|  We are met on a great battle-field of that war.
-         #|  We have come to dedicate a portion of that field, as a final
-         #|resting place for those who here gave their lives that that
-         #|nation might live.  It is altogether fitting and proper that
-         #|we should do this.
-         #|  But, in a larger sense, we can not dedicate — we can not
-         #|consecrate — we can not hallow — this ground.
-         #|  The brave men, living and dead, who struggled here, have
-         #|consecrated it, far above our poor power to add or detract.
-         #|The world will little note, nor long remember what we say here,
-         #|but it can never forget what they did here.
-         #|  It is for us the living, rather, to be dedicated here to the
-         #|unfinished work which they who fought here have thus far so
-         #|nobly advanced.  It is rather for us to be here dedicated to
-         #|the great task remaining before us — that from these honored
-         #|dead we take increased devotion to that cause for which they
-         #|gave the last full measure of devotion —
-         #|  that we here highly resolve that these dead shall not have
-         #|died in vain — that this nation, under God, shall have a new
-         #|birth of freedom — and that government of the people, by the
-         #|people, for the people, shall not perish from this earth.
-         #|
-         #|Abraham Lincoln, November 19, 1863, Gettysburg, Pennsylvania
-         #|
+    #|this continent, a new nation, conceived in Liberty, and dedicated
+    #|to the proposition that all men are created equal.
+    #|  Now we are engaged in a great Civil War, testing whether that
+    #|nation, or any nation so conceived and so dedicated, can long
+    #|endure.
+    #|  We are met on a great battle-field of that war.
+    #|  We have come to dedicate a portion of that field, as a final
+    #|resting place for those who here gave their lives that that
+    #|nation might live.  It is altogether fitting and proper that
+    #|we should do this.
+    #|  But, in a larger sense, we can not dedicate — we can not
+    #|consecrate — we can not hallow — this ground.
+    #|  The brave men, living and dead, who struggled here, have
+    #|consecrated it, far above our poor power to add or detract.
+    #|The world will little note, nor long remember what we say here,
+    #|but it can never forget what they did here.
+    #|  It is for us the living, rather, to be dedicated here to the
+    #|unfinished work which they who fought here have thus far so
+    #|nobly advanced.  It is rather for us to be here dedicated to
+    #|the great task remaining before us — that from these honored
+    #|dead we take increased devotion to that cause for which they
+    #|gave the last full measure of devotion —
+    #|  that we here highly resolve that these dead shall not have
+    #|died in vain — that this nation, under God, shall have a new
+    #|birth of freedom — and that government of the people, by the
+    #|people, for the people, shall not perish from this earth.
+    #|
+    #|Abraham Lincoln, November 19, 1863, Gettysburg, Pennsylvania
+    #|
     ,
     gzip: [
       0x1f, 0x8b, 0x08, 0x08, 0xd1, 0x12, 0x2b, 0x4a, 0x00, 0x03, 0x67, 0x65, 0x74,
@@ -188,7 +190,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x28, 0xcf, 0x2f, 0xca, 0x49, 0xe1, 0x02, 0x00, 0x2d, 0x3b, 0x08, 0xaf, 0x0c,
       0x00, 0x00, 0x00, b'g', b'a', b'r', b'b', b'a', b'g', b'e', b'!', b'!', b'!',
     ],
-    err: Some(@gzip.ErrHeader),
+    err: Some(@gzip.err_header),
   },
   { // has 1 non-empty fixed huffman block not enough header
     name: "hello.txt",
@@ -200,7 +202,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x28, 0xcf, 0x2f, 0xca, 0x49, 0xe1, 0x02, 0x00, 0x2d, 0x3b, 0x08, 0xaf, 0x0c,
       0x00, 0x00, 0x00, 0x1f,
     ],
-    err: Some(@gzip.ErrUnexpectedEOF),
+    err: Some(@gzip.err_unexpected_eof),
   },
   { // has 1 non-empty fixed huffman block but corrupt checksum
     name: "hello.txt",
@@ -212,7 +214,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x28, 0xcf, 0x2f, 0xca, 0x49, 0xe1, 0x02, 0x00, 0xff, 0xff, 0xff, 0xff, 0x0c,
       0x00, 0x00, 0x00,
     ],
-    err: Some(@gzip.ErrChecksum),
+    err: Some(@gzip.err_checksum),
   },
   { // has 1 non-empty fixed huffman block but corrupt size
     name: "hello.txt",
@@ -224,7 +226,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x28, 0xcf, 0x2f, 0xca, 0x49, 0xe1, 0x02, 0x00, 0x2d, 0x3b, 0x08, 0xaf, 0xff,
       0x00, 0x00, 0x00,
     ],
-    err: Some(@gzip.ErrChecksum),
+    err: Some(@gzip.err_checksum),
   },
   {
     name: "f1l3n4m3.tXt",
@@ -266,7 +268,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x00, 0x0c, 0x00,
       0xf3, 0xff, 0x68, 0x65, 0x6c, 0x6c, 0x6f,
     ],
-    err: Some(@gzip.ErrUnexpectedEOF),
+    err: Some(@gzip.err_unexpected_eof),
   },
   {
     name: "",
@@ -275,7 +277,7 @@ let gunzip_tests : Array[GunzipTest] = [
     gzip: [
       0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xf2, 0x48, 0xcd,
     ],
-    err: Some(@gzip.ErrUnexpectedEOF),
+    err: Some(@gzip.err_unexpected_eof),
   },
   {
     name: "hello.txt",
@@ -288,7 +290,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x00, 0x00, 0x00, 0x1f, 0x8b, 0x08, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
       0x01,
     ],
-    err: Some(@gzip.ErrUnexpectedEOF),
+    err: Some(@gzip.err_unexpected_eof),
   },
   {
     name: "",
@@ -301,7 +303,7 @@ let gunzip_tests : Array[GunzipTest] = [
       0x00, 0x00, 0x00, 0x1f, 0x8b, 0x08, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff,
       0x01,
     ],
-    err: Some(@gzip.ErrUnexpectedEOF),
+    err: Some(@gzip.err_unexpected_eof),
   },
 ]
 
@@ -311,53 +313,74 @@ test "decompressor by resetting the reader" {
   // Keep resetting this reader.
   // It is intended behavior that Reader.Reset can be called on a zero-value
   // Reader and be the equivalent as if NewReader was used instead.
-  let r1 = @buffer.Buffer::new()
-    |> @flate.IOReader::from_buffer()
-    |> @gzip.Reader::new()
+  let (r1, _) = @io.Buffer::new() |> @gzip.Reader::new()
 
   //
-  let b = @buffer.Buffer::new()
+  let b = @io.Buffer::new()
   for tt in gunzip_tests {
     @gzip.gmldbg(
       "Running test: \{tt.desc} - gzip (\{tt.gzip.length()} bytes)=\{@gzip.dump_av(tt.gzip[:])}",
     )
 
     // Test NewReader.
-    let inp = @buffer.Buffer::new()
-    inp.write_bytes(Bytes::from_array(tt.gzip))
-    let r2 = @gzip.Reader::new(@flate.IOReader::from_buffer(inp))
-    // defer r2.Close()
-    assert_eq!(tt.name, r2.header.name)
+    let inp = @io.Buffer::new()
+    guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
+    let (r2, err) = @gzip.Reader::new(inp)
+    match err {
+      Some(e) => {
+        @gzip.gmldbg("END OF TEST \{tt.desc}: A")
+        raise e
+        // continue
+      }
+      _ => ()
+    }
+    // defer r2.Close()  // TODO
+    if tt.name != r2.header.name {
+      guard let None = r2.close()
+      assert_eq!(tt.name, r2.header.name)
+    }
     b.reset()
     try {
-      b.write_bytes(r2.read_all!())
-      guard let None = tt // expected success, got success
-        .err
+      guard let (_, None) = @io.copy(b, r2) else {
+        (_, Some(e)) => raise e
+      }
+      // expected success, got success
+      guard let None = tt.err else { Some(e) => raise e }
 
     } catch {
-      e => {
-        @gzip.gmldbg(
-          "test \{tt.desc} - r2.read_all! raised ERROR: tt.err=\{tt.err}",
-        )
+      e => // assert_eq!(e, tt.err)  // TODO: IOErrors _CAN_ be compared!!! FIX.
         match (e, tt.err) {
-          (_, Some(_)) => () // expected error, got error, proceed
+          (_, Some(_)) => () // expected (SOME?!?!?) error, got (SOME?!?!?) error, proceed
           _ => fail!("\{tt.desc} got error, but expected no error")
         }
-      }
     }
     let s = @base64.bytes2str(b.to_bytes())
     assert_eq!(s, tt.raw)
 
     // Test Reader.Reset.
-    let inp = @buffer.Buffer::new()
-    inp.write_bytes(Bytes::from_array(tt.gzip))
-    let _ = r1.reset!(@flate.IOReader::from_buffer(inp))
-    assert_eq!(tt.name, r1.header.name)
+    @gzip.gmldbg("\{tt.desc}: Test Reader.Reset.")
+    let inp = @io.Buffer::new()
+    guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
+    let err = r1.reset(inp)
+    match err {
+      Some(e) => {
+        @gzip.gmldbg("END OF TEST \{tt.desc}: B")
+        raise e
+        // continue
+      }
+      _ => ()
+    }
+    if tt.name != r2.header.name {
+      guard let None = r2.close()
+      assert_eq!(tt.name, r1.header.name)
+    }
     b.reset()
     try {
-      b.write_bytes(r1.read_all!())
-      guard let None = tt // expected success, got success
-        .err
+      guard let (_, None) = @io.copy(b, r1) else {
+        (_, Some(e)) => raise e
+      }
+      // expected success, got success
+      guard let None = tt.err else { Some(e) => raise e }
 
     } catch {
       e =>
@@ -484,8 +507,8 @@ test "decompressor by resetting the reader" {
 // 		for i := 1; i < len(tc.data); i++ {
 // 			r, err := NewReader(strings.NewReader(string(tc.data[:i])))
 // 			if err != nil {
-// 				if err != io.ErrUnexpectedEOF {
-// 					t.Errorf("NewReader(%s-%d) on truncated stream: got %v, want %v", tc.name, i, err, io.ErrUnexpectedEOF)
+// 				if err != io.err_unexpected_eof {
+// 					t.Errorf("NewReader(%s-%d) on truncated stream: got %v, want %v", tc.name, i, err, io.err_unexpected_eof)
 // 				}
 // 				continue
 // 			}
@@ -493,8 +516,8 @@ test "decompressor by resetting the reader" {
 // 			if ferr, ok := err.(*flate.ReadError); ok {
 // 				err = ferr.Err
 // 			}
-// 			if err != io.ErrUnexpectedEOF {
-// 				t.Errorf("io.Copy(%s-%d) on truncated stream: got %v, want %v", tc.name, i, err, io.ErrUnexpectedEOF)
+// 			if err != io.err_unexpected_eof {
+// 				t.Errorf("io.Copy(%s-%d) on truncated stream: got %v, want %v", tc.name, i, err, io.err_unexpected_eof)
 // 			}
 // 		}
 // 	}
