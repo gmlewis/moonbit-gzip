@@ -308,8 +308,6 @@ let gunzip_tests : Array[GunzipTest] = [
 ]
 
 test "decompressor by resetting the reader" {
-  @gzip.gml_debug.val = true
-
   // Keep resetting this reader.
   // It is intended behavior that Reader.Reset can be called on a zero-value
   // Reader and be the equivalent as if NewReader was used instead.
@@ -318,20 +316,13 @@ test "decompressor by resetting the reader" {
   //
   let b = @io.Buffer::new()
   for tt in gunzip_tests {
-    @gzip.gmldbg(
-      "Running test: \{tt.desc} - gzip (\{tt.gzip.length()} bytes)=\{@gzip.dump_av(tt.gzip[:])}",
-    )
-
     // Test NewReader.
     let inp = @io.Buffer::new()
     guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
     let (r2, err) = @gzip.Reader::new(inp)
     match err {
-      Some(e) => {
-        @gzip.gmldbg("END OF TEST \{tt.desc}: A")
-        raise e
-        // continue
-      }
+      Some(e) => raise e
+      // continue
       _ => ()
     }
     // defer r2.Close()  // TODO
@@ -358,16 +349,12 @@ test "decompressor by resetting the reader" {
     assert_eq!(s, tt.raw)
 
     // Test Reader.Reset.
-    @gzip.gmldbg("\{tt.desc}: Test Reader.Reset.")
     let inp = @io.Buffer::new()
     guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
     let err = r1.reset(inp)
     match err {
-      Some(e) => {
-        @gzip.gmldbg("END OF TEST \{tt.desc}: B")
-        raise e
-        // continue
-      }
+      Some(e) => raise e
+      // continue
       _ => ()
     }
     if tt.name != r2.header.name {
@@ -393,7 +380,6 @@ test "decompressor by resetting the reader" {
     assert_eq!(s, tt.raw)
 
     //
-    @gzip.gmldbg("test \{tt.desc} - PASSED!!!")
   }
 }
 

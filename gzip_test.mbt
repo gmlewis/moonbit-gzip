@@ -9,18 +9,11 @@
 
 typealias Slice[T] = @io.Slice[T]
 
-let broken : Map[Int, Bool] = { 2: true }
-
 test "empty payload still forms a valid GZIP stream" {
-  @gzip.gml_debug.val = broken[0].or_default()
-  @gzip.gmldbg("=== RUN   TestEmpty")
-
-  //
   let buf = @io.Buffer::new()
   guard let None = @gzip.Writer::new(buf).close()
 
   //
-  @gzip.gmldbg("GML: TestEmpty: got=\{dump_buf(buf)}")
 
   //
   let (r, err) = @gzip.Reader::new(buf)
@@ -31,7 +24,7 @@ test "empty payload still forms a valid GZIP stream" {
   guard let (b, None) = @io.read_all(r)
   inspect!(b.length(), content="0")
   guard let None = r.close()
-  @gzip.gmldbg("--- PASS: TestEmpty (0.00s)")
+
 }
 
 fn dump_buf(buf : @io.Buffer) -> String {
@@ -44,10 +37,6 @@ fn dump_buf(buf : @io.Buffer) -> String {
 }
 
 test "roundtrip gzipping and then gunzipping is the identity function" {
-  @gzip.gml_debug.val = broken[1].or_default()
-  @gzip.gmldbg("=== RUN   TestRoundTrip")
-
-  //
   let buf = @io.Buffer::new()
   let w = @gzip.Writer::new(buf)
 
@@ -63,7 +52,6 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   guard let None = w.close()
 
   //
-  @gzip.gmldbg("GML: TestRoundTrip: got=\{dump_buf(buf)}")
 
   //
   let (r, err) = @gzip.Reader::new(buf)
@@ -79,13 +67,10 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   assert_eq!(t.to_unix_second(), 100_000_000)
   assert_eq!(r.header.name, "name")
   guard let None = r.close()
-  @gzip.gmldbg("--- PASS: TestRoundTrip (0.00s)")
+
 }
 
 test "latin1 roundtrip metadata that is representable in Latin-1 survives a round trip" {
-  @gzip.gml_debug.val = broken[2].or_default()
-  @gzip.gmldbg("=== RUN   TestLatin1RoundTrip")
-
   // (name : String, ok : Bool)
   let test_cases = [
     ("", true),
@@ -100,7 +85,6 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     ("\x00 as does Látin-1 with NUL", false),
   ]
   for tc in test_cases {
-    @gzip.gmldbg("\ntest '\{tc.0}', tc.1=\{tc.1}...")
     let buf = @io.Buffer::new()
 
     //
@@ -111,23 +95,16 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
       abort("Writer.Close: name = '\{tc.0}', err = \{err}")
     }
     if not(tc.1) {
-      @gzip.gmldbg("GML test '\{tc.0}' PASSED: A")
       continue
     }
-
-    //
-    @gzip.gmldbg(
-      "GML: TestLatin1RoundTrip: name='\{tc.0}', got=\{dump_buf(buf)}",
-    )
 
     //
     guard let (r, None) = @gzip.Reader::new(buf)
     let _ = @io.read_all(r)
     assert_eq!(r.header.name, tc.0)
     guard let None = r.close()
-    @gzip.gmldbg("GML test '\{tc.0}' PASSED: B")
+
   }
-  @gzip.gmldbg("--- PASS: TestLatin1RoundTrip (0.00s)")
 }
 
 test "writer flush" {
