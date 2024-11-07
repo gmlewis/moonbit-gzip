@@ -185,15 +185,6 @@ fn read_string(self : Reader) -> (String, IOError?) {
   )
 }
 
-fn dump_buf(buf : @io.Buffer) -> String {
-  buf
-  .to_bytes()
-  .to_array()
-  .map(fn(b) { b.to_int() })
-  .to_string()
-  .replace_all(old=",", new="")
-}
-
 test "internal functions for converting to and from Latin-1" {
   let latin1 = [b'\xc4', b'u', 0xdf, b'e', b'r', b'u', b'n', b'g', 0]
   let utf16 = "Äußerung"

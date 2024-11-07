@@ -130,14 +130,6 @@ fn write_string(self : Writer, s : String) -> IOError? {
   None
 }
 
-pub fn dump_av(buf : ArrayView[Byte]) -> String {
-  buf.iter().map(fn(b) { b.to_int() }).to_string().replace_all(old=",", new="")
-}
-
-pub fn dump_slice(buf : Slice[Byte]) -> String {
-  buf.iter().map(fn(b) { b.to_int() }).to_string().replace_all(old=",", new="")
-}
-
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
 pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {

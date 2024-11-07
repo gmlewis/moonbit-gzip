@@ -27,15 +27,6 @@ test "empty payload still forms a valid GZIP stream" {
 
 }
 
-fn dump_buf(buf : @io.Buffer) -> String {
-  buf
-  .to_bytes()
-  .to_array()
-  .map(fn(b) { b.to_int() })
-  .to_string()
-  .replace_all(old=",", new="")
-}
-
 test "roundtrip gzipping and then gunzipping is the identity function" {
   let buf = @io.Buffer::new()
   let w = @gzip.Writer::new(buf)
