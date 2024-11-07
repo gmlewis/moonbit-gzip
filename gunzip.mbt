@@ -189,7 +189,12 @@ fn read_string(self : Reader) -> (String, IOError?) {
       return (@base64.bytes2str(Bytes::from_iter(self.buf[:i].iter())), None)
     }
   }
-  ("", Some(IOError("gunzip.mbt: read_string: unexpected error: unterminated string")))
+  (
+    "",
+    Some(
+      IOError("gunzip.mbt: read_string: unexpected error: unterminated string"),
+    ),
+  )
 }
 
 fn dump_buf(buf : @io.Buffer) -> String {
@@ -366,7 +371,9 @@ fn read_header(self : Reader) -> (Header, IOError?) {
     )
     let digest = le_uint16(self.buf[:2])
     let z_digest = self.digest.digest() & 0xffff
-    gmldbg("GML: readHeader: D2: digest=\{digest}, uint16(z.digest)=\{z_digest}")
+    gmldbg(
+      "GML: readHeader: D2: digest=\{digest}, uint16(z.digest)=\{z_digest}",
+    )
     if digest != z_digest {
       gmldbg("GML: gunzip.go: readHeader: H: err=err_header")
       return (hdr, Some(err_header))
@@ -399,6 +406,8 @@ pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
     gmldbg("GML: gunzip.go: Read: A: z.err=\{self.err}")
     return (0, self.err)
   }
+
+  //
   let mut n = 0
   while n == 0 {
     gmldbg("GML: gunzip.go: Read: START of for n == 0 loop")
@@ -456,7 +465,7 @@ pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
     self.err = err
     match err {
       Some(_) => {
-        gmldbg("GML: gunzip.go: Read: F: z.err=\{self.err}")
+        gmldbg("GML: gunzip.go: Read: F: return n=\{n}, z.err=\{self.err}")
         return (n, self.err)
       }
       _ => ()

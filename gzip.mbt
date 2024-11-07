@@ -109,12 +109,13 @@ fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
 fn write_string(self : Writer, s : String) -> IOError? {
   gmldbg("GML: gzip.go: (z *Writer) writeString(s string) (err error) {")
-  let b = @base64.str2bytes(s).to_array()
+  let ch = s.to_array()
   // GZIP stores Latin-1 strings; error if non-Latin-1; convert if non-ASCII.
   let mut needconv = false
-  for v in b {
+  for c in ch {
+    let v = c.to_int()
     gmldbg("GML: gzip.go: writeString: A: v=\{v}")
-    if v == 0 { // || v > 0xff {
+    if v == 0 || v >= 0xff {
       return Some(gzip_error("@gzip.write_string: non-Latin-1 header string"))
     }
     if v > 0x7f {
@@ -125,14 +126,15 @@ fn write_string(self : Writer, s : String) -> IOError? {
     let b = Slice::new(Array::make(s.length(), b'\x00'))
     for i in 0..<s.length() {
       let v = s[i]
-      gmldbg("GML: gzip.go: writeString: B: v=\{v}")
+      gmldbg("GML: gzip.go: writeString: B: v=\{v.to_int()}")
       b[i] = (v.to_uint() & 0xff).to_byte()
     }
     let (_, err) = self.w.write(b)
     guard let None = err else { _ => return err }
 
   } else {
-    gmldbg("GML: gzip.go: writeString: C: s=\{b}")
+    let b = @base64.str2bytes(s).to_array()
+    gmldbg("GML: gzip.go: writeString: C: s=\{dump_av(b[:])}")
     let (_, err) = self.w.write(Slice::new(b))
     guard let None = err else { _ => return err }
 
@@ -233,7 +235,7 @@ pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
       guard let None = self.write_string(self.header.name) else {
         e => {
           self.err = e
-          gmldbg("GML: gzip.go: Write: header: P")
+          gmldbg("GML: gzip.go: Write: header: P: z.err=\{e}")
           return (0, e)
         }
       }
