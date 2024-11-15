@@ -7,7 +7,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-pub type CompressionLevel Int derive(Show, Compare, Eq)
+pub(all) type CompressionLevel Int derive(Show, Compare, Eq)
 
 // pub let huffman_only : CompressionLevel = -2
 
@@ -20,7 +20,7 @@ pub let best_speed : CompressionLevel = 1
 // pub let best_compression : CompressionLevel = 9
 
 /// Writes to a Writer are compressed and written to w.
-pub struct Writer {
+pub(all) struct Writer {
   header : Header // written at first call to Write, Flush, or Close
   w : @io.Writer
   level : CompressionLevel

@@ -52,7 +52,7 @@ fn no_eof(err : IOError) -> IOError {
 ///
 /// Strings must be UTF-8 encoded and may only contain Unicode code points
 /// U+0001 through U+00FF, due to limitations of the GZIP file format.
-pub struct Header {
+pub(all) struct Header {
   mut comment : String // comment
   mut extra : Array[Byte] // "extra data"
   mut mod_time : @time.PlainDateTime? // modification time
@@ -78,7 +78,7 @@ pub fn Header::new() -> Header {
 // have the expected length or checksum. Clients should treat data
 // returned by [Reader.Read] as tentative until they receive the [ioeof]
 // marking the end of the data.
-pub struct Reader {
+pub(all) struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
   priv mut r : @flate.Reader
   priv mut decompressor : @io.ReadCloser
