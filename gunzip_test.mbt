@@ -332,9 +332,7 @@ test "decompressor by resetting the reader" {
     }
     b.reset()
     try {
-      guard let (_, None) = @io.copy(b, r2) else {
-        (_, Some(e)) => raise e
-      }
+      guard let (_, None) = @io.copy(b, r2) else { (_, Some(e)) => raise e }
       // expected success, got success
       guard let None = tt.err else { Some(e) => raise e }
 
@@ -363,9 +361,7 @@ test "decompressor by resetting the reader" {
     }
     b.reset()
     try {
-      guard let (_, None) = @io.copy(b, r1) else {
-        (_, Some(e)) => raise e
-      }
+      guard let (_, None) = @io.copy(b, r1) else { (_, Some(e)) => raise e }
       // expected success, got success
       guard let None = tt.err else { Some(e) => raise e }
 
