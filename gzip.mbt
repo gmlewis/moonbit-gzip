@@ -7,6 +7,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 pub(all) type CompressionLevel Int derive(Show, Compare, Eq)
 
 // pub let huffman_only : CompressionLevel = -2
@@ -15,11 +16,12 @@ pub(all) type CompressionLevel Int derive(Show, Compare, Eq)
 
 // pub let no_compression : CompressionLevel = 0
 
+///|
 pub let best_speed : CompressionLevel = 1
 
 // pub let best_compression : CompressionLevel = 9
 
-/// Writes to a Writer are compressed and written to w.
+///| Writes to a Writer are compressed and written to w.
 pub(all) struct Writer {
   header : Header // written at first call to Write, Flush, or Close
   w : @io.Writer
@@ -33,11 +35,12 @@ pub(all) struct Writer {
   mut err : IOError?
 }
 
+///|
 fn gzip_error(s : String) -> IOError {
   IOError(s)
 }
 
-/// Writer::new returns a new [IOWriter] using the optional compression level
+///| Writer::new returns a new [IOWriter] using the optional compression level
 /// (or `default_compression`).
 /// Writes to the returned writer are compressed and written to w.
 ///
@@ -64,6 +67,7 @@ pub fn Writer::new(w : @io.Writer) -> Writer {
 }
 
 // write_bytes writes a length-prefixed byte slice to self.w.
+///|
 fn write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
   if b.length() > 0xffff {
     return Some(gzip_error("gzip.Write: Extra data is too large"))
@@ -76,11 +80,13 @@ fn write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
   err
 }
 
+///|
 fn le_put_uint16(b : Array[Byte], offset : Int, value : UInt) -> Unit {
   b[offset] = (value & 0xff).to_byte()
   b[offset + 1] = ((value >> 8) & 0xff).to_byte()
 }
 
+///|
 fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
   b[offset] = (value & 0xff).to_byte()
   b[offset + 1] = ((value >> 8) & 0xff).to_byte()
@@ -93,7 +99,7 @@ fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
 //   le_put_uint32(b, offset + 4, ((value >> 32) & 0xffffffff).to_uint())
 // }
 
-/// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
+///| write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
 fn write_string(self : Writer, s : String) -> IOError? {
   let ch = s.to_array()
@@ -132,6 +138,7 @@ fn write_string(self : Writer, s : String) -> IOError? {
 
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
+///|
 pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
   match self.err {
     Some(_) => return (0, self.err)
@@ -223,7 +230,7 @@ pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
   (n, err)
 }
 
-/// flush flushes any pending compressed data to the underlying writer.
+///| flush flushes any pending compressed data to the underlying writer.
 ///
 /// It is useful mainly in compressed network protocols, to ensure that
 /// a remote reader has enough data to reconstruct a packet. Flush does
@@ -247,7 +254,7 @@ pub fn flush(self : Writer) -> IOError? {
   None
 }
 
-/// close closes the [Writer] by flushing any unwritten data to the underlying
+///| close closes the [Writer] by flushing any unwritten data to the underlying
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
 pub fn close(self : Writer) -> IOError? {

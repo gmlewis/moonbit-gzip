@@ -7,39 +7,53 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 let gzip_id1 = b'\x1f'
 
+///|
 let gzip_id2 = b'\x8b'
 
+///|
 let gzip_deflate : Byte = b'\x08'
 
 // let flag_text : Byte = b'\x01'
 
+///|
 let flag_hdr_crc : Byte = b'\x02'
 
+///|
 let flag_extra : Byte = b'\x04'
 
+///|
 let flag_name : Byte = b'\x08'
 
+///|
 let flag_comment : Byte = b'\x10'
 
 // var le = binary.LittleEndian
 
+///|
 typealias Slice[T] = @io.Slice[T]
 
+///|
 typealias IOError = @io.IOError
 
 // err_checksum is returned when reading GZIP data that has an invalid checksum.
+///|
 pub let err_checksum : IOError = IOError("gzip: invalid checksum")
 
 // err_header is returned when reading GZIP data that has an invalid header.
+///|
 pub let err_header : IOError = IOError("gzip: invalid header")
 
+///|
 pub let err_unexpected_eof : IOError = @io.err_unexpected_eof
 
+///|
 pub let ioeof : IOError = @io.eof
 
 // no_eof converts ioeof to io.err_unexpected_eof.
+///|
 fn no_eof(err : IOError) -> IOError {
   if ioeof == err {
     return err_unexpected_eof
@@ -47,7 +61,7 @@ fn no_eof(err : IOError) -> IOError {
   err
 }
 
-/// The gzip file stores a header giving metadata about the compressed file.
+///| The gzip file stores a header giving metadata about the compressed file.
 /// That header is exposed as the fields of the [Writer] and [Reader] structs.
 ///
 /// Strings must be UTF-8 encoded and may only contain Unicode code points
@@ -60,6 +74,7 @@ pub(all) struct Header {
   mut os : Byte // operating system type
 }
 
+///|
 pub fn Header::new() -> Header {
   { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
 }
@@ -78,6 +93,7 @@ pub fn Header::new() -> Header {
 // have the expected length or checksum. Clients should treat data
 // returned by [Reader.Read] as tentative until they receive the [ioeof]
 // marking the end of the data.
+///|
 pub(all) struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
   priv mut r : @flate.Reader
@@ -94,6 +110,7 @@ pub(all) struct Reader {
 // It is the caller's responsibility to call Close on the [Reader] when done.
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
+///|
 pub fn Reader::new(r : @flate.Reader) -> (Reader, IOError?) {
   let z = {
     header: Header::new(),
@@ -112,6 +129,7 @@ pub fn Reader::new(r : @flate.Reader) -> (Reader, IOError?) {
 // Reset discards the [Reader] z's state and makes it equivalent to the
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
+///|
 pub fn reset(self : Reader, r : @flate.Reader) -> IOError? {
   self.r = r
   self.digest = @crc32.Digest::new()
@@ -140,6 +158,7 @@ pub fn reset(self : Reader, r : @flate.Reader) -> IOError? {
 // in order to be left positioned just after the gzip stream.
 // To start the next stream, call self.Reset(r) followed by self.Multistream(false).
 // If there is no next stream, self.Reset(r) will return [ioeof].
+///|
 pub fn multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
@@ -148,6 +167,7 @@ pub fn multistream(self : Reader, ok : Bool) -> Unit {
 // It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
 // will output a MoonBit String encoded using UTF-16.
 // This method always updates self.digest with the data read.
+///|
 fn read_string(self : Reader) -> (String, IOError?) {
   let mut need_conv = false
   for i = 0; true; i = i + 1 {
@@ -228,6 +248,7 @@ test "internal functions for converting to and from Latin-1" {
 
 // read_header reads the GZIP header according to section 2.3.1.
 // This method does not set self.err.
+///|
 fn read_header(self : Reader) -> (Header, IOError?) {
   // RFC 1952, section 2.2, says the following:
   //	A gzip file consists of a series of "members" (compressed data sets).
@@ -325,10 +346,12 @@ fn read_header(self : Reader) -> (Header, IOError?) {
   (hdr, None)
 }
 
+///|
 fn le_uint16(b : ArrayView[Byte]) -> UInt {
   b[0].to_uint() | (b[1].to_uint() << 8)
 }
 
+///|
 fn le_uint32(b : ArrayView[Byte]) -> UInt {
   b[0].to_uint() |
   (b[1].to_uint() << 8) |
@@ -337,6 +360,7 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 }
 
 // Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
+///|
 pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
   if not(self.err.is_empty()) {
     return (0, self.err)
@@ -397,6 +421,7 @@ pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
 // Close closes the [Reader]. It does not close the underlying [io.Reader].
 // In order for the GZIP checksum to be verified, the reader must be
 // fully consumed until the [ioeof].
+///|
 pub fn close(self : Reader) -> IOError? {
   guard let None = self.decompressor.close() else { e => return e }
   None

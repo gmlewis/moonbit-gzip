@@ -7,8 +7,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 typealias IOError = @io.IOError
 
+///|
 struct GunzipTest {
   name : String
   desc : String
@@ -17,6 +19,7 @@ struct GunzipTest {
   err : IOError?
 }
 
+///|
 let gunzip_tests : Array[GunzipTest] = [
   { // has 1 empty fixed-huffman block
     name: "empty.txt",

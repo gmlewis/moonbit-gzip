@@ -7,6 +7,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+///|
 typealias Slice[T] = @io.Slice[T]
 
 test "empty payload still forms a valid GZIP stream" {
