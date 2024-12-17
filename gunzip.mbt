@@ -96,8 +96,8 @@ pub fn Header::new() -> Header {
 ///|
 pub(all) struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
-  priv mut r : @flate.Reader
-  priv mut decompressor : @io.ReadCloser
+  priv mut r : &@flate.Reader
+  priv mut decompressor : &@io.ReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
   priv mut size : UInt // Uncompressed size (section 2.3.1)
   priv mut buf : Array[Byte] // [512]byte
@@ -111,11 +111,11 @@ pub(all) struct Reader {
 //
 // The [Reader.Header] fields will be valid in the [Reader] returned.
 ///|
-pub fn Reader::new(r : @flate.Reader) -> (Reader, IOError?) {
+pub fn Reader::new(r : &@flate.Reader) -> (Reader, IOError?) {
   let z = {
     header: Header::new(),
     r,
-    decompressor: @flate.Reader::new(r),
+    decompressor: &@flate.Reader::new(r),
     digest: @crc32.Digest::new(),
     size: 0,
     buf: [],
@@ -130,7 +130,7 @@ pub fn Reader::new(r : @flate.Reader) -> (Reader, IOError?) {
 // result of its original state from [NewReader], but reading from r instead.
 // This permits reusing a [Reader] rather than allocating a new one.
 ///|
-pub fn reset(self : Reader, r : @flate.Reader) -> IOError? {
+pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
   self.r = r
   self.digest = @crc32.Digest::new()
   self.size = 0
@@ -219,7 +219,7 @@ test "internal functions for converting to and from Latin-1" {
   let z = {
     header: Header::new(),
     r,
-    decompressor: @flate.Reader::new(r),
+    decompressor: &@flate.Reader::new(r),
     digest: @crc32.Digest::new(),
     size: 0,
     buf: latin1,
@@ -342,7 +342,7 @@ fn read_header(self : Reader) -> (Header, IOError?) {
 
   //
   self.digest = @crc32.Digest::new()
-  self.decompressor = @flate.Reader::new(self.r)
+  self.decompressor = &@flate.Reader::new(self.r)
   (hdr, None)
 }
 

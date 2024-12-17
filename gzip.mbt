@@ -24,12 +24,12 @@ pub let best_speed : CompressionLevel = 1
 ///| Writes to a Writer are compressed and written to w.
 pub(all) struct Writer {
   header : Header // written at first call to Write, Flush, or Close
-  w : @io.Writer
+  w : &@io.Writer
   level : CompressionLevel
   mut wrote_header : Bool
   mut closed : Bool
   mut buf : Array[Byte] // [10]byte
-  mut compressor : @io.WriteCloser
+  mut compressor : &@io.WriteCloser
   mut digest : UInt // CRC-32, IEEE polynomial (section 8)
   mut size : UInt // Uncompressed size (section 2.3.1)
   mut err : IOError?
@@ -49,7 +49,7 @@ fn gzip_error(s : String) -> IOError {
 ///
 /// Callers that wish to set the fields in Writer.Header must do so before
 /// the first call to Write, Flush, or Close.
-pub fn Writer::new(w : @io.Writer) -> Writer {
+pub fn Writer::new(w : &@io.Writer) -> Writer {
   let header = Header::new()
   let buf = Array::make(10, b'\x00')
   {
