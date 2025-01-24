@@ -257,7 +257,7 @@ pub fn flush(self : Writer) -> IOError? {
 ///| close closes the [Writer] by flushing any unwritten data to the underlying
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
-pub fn close(self : Writer) -> IOError? {
+pub fn Writer::close(self : Writer) -> IOError? {
   guard let None = self.err else { _ => return self.err }
   if self.closed {
     return None
