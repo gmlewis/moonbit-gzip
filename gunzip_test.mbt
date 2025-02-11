@@ -310,6 +310,7 @@ let gunzip_tests : Array[GunzipTest] = [
   },
 ]
 
+///|
 test "decompressor by resetting the reader" {
   // Keep resetting this reader.
   // It is intended behavior that Reader.Reset can be called on a zero-value

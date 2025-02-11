@@ -205,6 +205,7 @@ fn read_string(self : Reader) -> (String, IOError?) {
   )
 }
 
+///|
 test "internal functions for converting to and from Latin-1" {
   let latin1 = [b'\xc4', b'u', 0xdf, b'e', b'r', b'u', b'n', b'g', 0]
   let utf16 = "Äußerung"

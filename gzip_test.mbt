@@ -10,6 +10,7 @@
 ///|
 typealias Slice[T] = @io.Slice[T]
 
+///|
 test "empty payload still forms a valid GZIP stream" {
   let buf = @io.Buffer::new()
   guard let None = @gzip.Writer::new(buf).close()
@@ -28,6 +29,7 @@ test "empty payload still forms a valid GZIP stream" {
 
 }
 
+///|
 test "roundtrip gzipping and then gunzipping is the identity function" {
   let buf = @io.Buffer::new()
   let w = @gzip.Writer::new(buf)
@@ -62,6 +64,7 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
 
 }
 
+///|
 test "latin1 roundtrip metadata that is representable in Latin-1 survives a round trip" {
   // (name : String, ok : Bool)
   let test_cases = [
@@ -99,6 +102,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
   }
 }
 
+///|
 test "writer flush" {
   let buf = @io.Buffer::new()
 
@@ -142,6 +146,7 @@ test "writer flush" {
   assert_eq!(buf.to_bytes().length(), 50)
 }
 
+///|
 test "multiple gzip files concatenated form a valid gzip file" {
   let buf = @io.Buffer::new()
   let w = @gzip.Writer::new(buf)
