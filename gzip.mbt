@@ -75,7 +75,7 @@ fn write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
   le_put_uint16(self.buf, 0, b.length().reinterpret_as_uint())
   let le_len = [self.buf[0], self.buf[1]]
   let (_, err) = self.w.write(Slice::new(le_len)[:])
-  guard let None = err else { _ => return err }
+  guard err is None else { return err }
   let (_, err) = self.w.write(b)
   err
 }
@@ -121,18 +121,18 @@ fn write_string(self : Writer, s : String) -> IOError? {
       b[i] = (v.to_uint() & 0xff).to_byte()
     }
     let (_, err) = self.w.write(b)
-    guard let None = err else { _ => return err }
+    guard err is None else { return err }
 
   } else {
     let b = @base64.str2bytes(s).to_array()
     let (_, err) = self.w.write(Slice::new(b))
-    guard let None = err else { _ => return err }
+    guard err is None else { return err }
 
   }
 
   // GZIP strings are NUL-terminated.
   let (_, err) = self.w.write(Slice::new([b'\x00']))
-  guard let None = err else { _ => return err }
+  guard err is None else { return err }
   None
 }
 
@@ -179,39 +179,34 @@ pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
     self.buf[9] = self.header.os
     let b = Slice::new(self.buf)
     let (_, err) = self.w.write(b)
-    guard let None = err else {
-      _ => {
-        self.err = err
-        return (0, err)
-      }
+    guard err is None else {
+      self.err = err
+      return (0, err)
     }
     match self.header.extra {
       [] => ()
       b => {
-        guard let None = self.write_bytes(Slice::new(b)) else {
-          e => {
-            self.err = e
-            return (0, e)
-          }
+        let err = self.write_bytes(Slice::new(b))
+        guard err is None else {
+          self.err = err
+          return (0, err)
         }
 
       }
     }
     if self.header.name != "" {
-      guard let None = self.write_string(self.header.name) else {
-        e => {
-          self.err = e
-          return (0, e)
-        }
+      let err = self.write_string(self.header.name)
+      guard err is None else {
+        self.err = err
+        return (0, err)
       }
 
     }
     if self.header.comment != "" {
-      guard let None = self.write_string(self.header.comment) else {
-        e => {
-          self.err = e
-          return (0, e)
-        }
+      let err = self.write_string(self.header.comment)
+      guard err is None else {
+        self.err = err
+        return (0, err)
       }
 
     }
@@ -239,14 +234,13 @@ pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
 ///
 /// In the terminology of the zlib library, Flush is equivalent to Z_SYNC_FLUSH.
 pub fn flush(self : Writer) -> IOError? {
-  guard let None = self.err else { _ => return self.err }
+  guard self.err is None else { return self.err }
   if self.closed {
     return None
   }
   if not(self.wrote_header) {
-    guard let (_, None) = self.write(Slice::new([b'\x00'])) else {
-      (_, e) => return e
-    }
+    let (_, err) = self.write(Slice::new([b'\x00']))
+    guard err is None else { return err }
 
   }
   // The simplified flate compressor has no flush method.
@@ -258,13 +252,14 @@ pub fn flush(self : Writer) -> IOError? {
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
 pub fn Writer::close(self : Writer) -> IOError? {
-  guard let None = self.err else { _ => return self.err }
+  guard self.err is None else { return self.err }
   if self.closed {
     return None
   }
   self.closed = true
   if not(self.wrote_header) {
-    guard let (_, None) = self.write(Slice::new([])) else { (_, e) => return e }
+    let (_, err) = self.write(Slice::new([]))
+    guard err is None else { return err }
 
   }
   self.err = self.compressor.close()

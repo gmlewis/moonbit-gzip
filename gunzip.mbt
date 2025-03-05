@@ -38,12 +38,10 @@ typealias Slice[T] = @io.Slice[T]
 ///|
 typealias IOError = @io.IOError
 
-// err_checksum is returned when reading GZIP data that has an invalid checksum.
-///|
+///| err_checksum is returned when reading GZIP data that has an invalid checksum.
 pub let err_checksum : IOError = IOError("gzip: invalid checksum")
 
-// err_header is returned when reading GZIP data that has an invalid header.
-///|
+///| err_header is returned when reading GZIP data that has an invalid header.
 pub let err_header : IOError = IOError("gzip: invalid header")
 
 ///|
@@ -52,8 +50,7 @@ pub let err_unexpected_eof : IOError = @io.err_unexpected_eof
 ///|
 pub let ioeof : IOError = @io.eof
 
-// no_eof converts ioeof to io.err_unexpected_eof.
-///|
+///| no_eof converts ioeof to io.err_unexpected_eof.
 fn no_eof(err : IOError) -> IOError {
   if ioeof == err {
     return err_unexpected_eof
@@ -79,21 +76,20 @@ pub fn Header::new() -> Header {
   { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
 }
 
-// A Reader is an [IOReadCloser] that can be read to retrieve
-// uncompressed data from a gzip-format compressed file.
-//
-// In general, a gzip file can be a concatenation of gzip files,
-// each with its own header. Reads from the Reader
-// return the concatenation of the uncompressed data of each.
-// Only the first header is recorded in the Reader fields.
-//
-// Gzip files store a length and checksum of the uncompressed data.
-// The Reader will return an [err_checksum] when [Reader.Read]
-// reaches the end of the uncompressed data if it does not
-// have the expected length or checksum. Clients should treat data
-// returned by [Reader.Read] as tentative until they receive the [ioeof]
-// marking the end of the data.
-///|
+///| A Reader is an [IOReadCloser] that can be read to retrieve
+/// uncompressed data from a gzip-format compressed file.
+///
+/// In general, a gzip file can be a concatenation of gzip files,
+/// each with its own header. Reads from the Reader
+/// return the concatenation of the uncompressed data of each.
+/// Only the first header is recorded in the Reader fields.
+///
+/// Gzip files store a length and checksum of the uncompressed data.
+/// The Reader will return an [err_checksum] when [Reader.Read]
+/// reaches the end of the uncompressed data if it does not
+/// have the expected length or checksum. Clients should treat data
+/// returned by [Reader.Read] as tentative until they receive the [ioeof]
+/// marking the end of the data.
 pub(all) struct Reader {
   mut header : Header // valid after NewReader or Reader.Reset
   priv mut r : &@flate.Reader
@@ -105,12 +101,17 @@ pub(all) struct Reader {
   priv mut multistream : Bool
 }
 
-// NewReader creates a new [IOReader] reading the given reader.
-//
-// It is the caller's responsibility to call Close on the [Reader] when done.
-//
-// The [Reader.Header] fields will be valid in the [Reader] returned.
+///| Reader implements the &io.Reader and &io.ReadCloser traits.
+let _interface1 : &@io.Reader = Reader::new(@io.Buffer::new()).0
+
 ///|
+let _interface2 : &@io.ReadCloser = Reader::new(@io.Buffer::new()).0
+
+///| NewReader creates a new [IOReader] reading the given reader.
+///
+/// It is the caller's responsibility to call Close on the [Reader] when done.
+///
+/// The [Reader.Header] fields will be valid in the [Reader] returned.
 pub fn Reader::new(r : &@flate.Reader) -> (Reader, IOError?) {
   let z = {
     header: Header::new(),
@@ -126,10 +127,10 @@ pub fn Reader::new(r : &@flate.Reader) -> (Reader, IOError?) {
   return (z, err)
 }
 
-// Reset discards the [Reader] z's state and makes it equivalent to the
-// result of its original state from [NewReader], but reading from r instead.
-// This permits reusing a [Reader] rather than allocating a new one.
 ///|
+/// Reset discards the [Reader] z's state and makes it equivalent to the
+/// result of its original state from [NewReader], but reading from r instead.
+/// This permits reusing a [Reader] rather than allocating a new one.
 pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
   self.r = r
   self.digest = @crc32.Digest::new()
@@ -142,32 +143,30 @@ pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
   return self.err
 }
 
-// Multistream controls whether the reader supports multistream files.
-//
-// If enabled (the default), the [Reader] expects the input to be a sequence
-// of individually gzipped data streams, each with its own header and
-// trailer, ending at EOF. The effect is that the concatenation of a sequence
-// of gzipped files is treated as equivalent to the gzip of the concatenation
-// of the sequence. This is standard behavior for gzip readers.
-//
-// Calling Multistream(false) disables this behavior; disabling the behavior
-// can be useful when reading file formats that distinguish individual gzip
-// data streams or mix gzip data streams with other data streams.
-// In this mode, when the [Reader] reaches the end of the data stream,
-// [Reader.Read] returns [ioeof]. The underlying reader must implement [io.ByteReader]
-// in order to be left positioned just after the gzip stream.
-// To start the next stream, call self.Reset(r) followed by self.Multistream(false).
-// If there is no next stream, self.Reset(r) will return [ioeof].
-///|
+///| Multistream controls whether the reader supports multistream files.
+///
+/// If enabled (the default), the [Reader] expects the input to be a sequence
+/// of individually gzipped data streams, each with its own header and
+/// trailer, ending at EOF. The effect is that the concatenation of a sequence
+/// of gzipped files is treated as equivalent to the gzip of the concatenation
+/// of the sequence. This is standard behavior for gzip readers.
+///
+/// Calling Multistream(false) disables this behavior; disabling the behavior
+/// can be useful when reading file formats that distinguish individual gzip
+/// data streams or mix gzip data streams with other data streams.
+/// In this mode, when the [Reader] reaches the end of the data stream,
+/// [Reader.Read] returns [ioeof]. The underlying reader must implement [io.ByteReader]
+/// in order to be left positioned just after the gzip stream.
+/// To start the next stream, call self.Reset(r) followed by self.Multistream(false).
+/// If there is no next stream, self.Reset(r) will return [ioeof].
 pub fn multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
 
-// read_string reads a NUL-terminated string from self.r.
-// It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
-// will output a MoonBit String encoded using UTF-16.
-// This method always updates self.digest with the data read.
-///|
+///| read_string reads a NUL-terminated string from self.r.
+/// It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
+/// will output a MoonBit String encoded using UTF-16.
+/// This method always updates self.digest with the data read.
 fn read_string(self : Reader) -> (String, IOError?) {
   let mut need_conv = false
   for i = 0; true; i = i + 1 {
@@ -212,7 +211,7 @@ test "internal functions for converting to and from Latin-1" {
 
   //
   let r = @io.Buffer::new()
-  guard let (_, None) = r.write_bytes(Bytes::from_array(latin1))
+  guard r.write_bytes(Bytes::from_array(latin1)) is (_, None)
 
   //
 
@@ -227,7 +226,7 @@ test "internal functions for converting to and from Latin-1" {
     err: None,
     multistream: false,
   }
-  guard let (s, None) = z.read_string()
+  guard z.read_string() is (s, None)
   assert_eq!(s, utf16)
   let w = @io.Buffer::new()
   let c : Writer = {
@@ -242,14 +241,13 @@ test "internal functions for converting to and from Latin-1" {
     size: 0U,
     err: None,
   }
-  guard let None = c.write_string(utf16)
+  guard c.write_string(utf16) is None
   let s = w.to_bytes().to_array()
   assert_eq!(s, latin1)
 }
 
-// read_header reads the GZIP header according to section 2.3.1.
-// This method does not set self.err.
-///|
+///| read_header reads the GZIP header according to section 2.3.1.
+/// This method does not set self.err.
 fn read_header(self : Reader) -> (Header, IOError?) {
   // RFC 1952, section 2.2, says the following:
   //	A gzip file consists of a series of "members" (compressed data sets).
@@ -313,17 +311,15 @@ fn read_header(self : Reader) -> (Header, IOError?) {
 
   //
   if (flg & flag_name) != 0 {
-    guard let (s, None) = self.read_string() else {
-      (_, Some(e)) => return (hdr, Some(no_eof(e)))
-    }
+    let (s, err) = self.read_string()
+    guard err is None else { return (hdr, Some(no_eof(err.unwrap()))) }
     hdr.name = s
   }
 
   //
   if (flg & flag_comment) != 0 {
-    guard let (s, None) = self.read_string() else {
-      (_, Some(e)) => return (hdr, Some(no_eof(e)))
-    }
+    let (s, err) = self.read_string()
+    guard err is None else { return (hdr, Some(no_eof(err.unwrap()))) }
     hdr.comment = s
   }
 
@@ -360,9 +356,8 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
   (b[3].to_uint() << 24)
 }
 
-// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
-///|
-pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
+///| Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
+pub impl @io.ReadCloser for Reader with read(self, p) {
   if not(self.err.is_empty()) {
     return (0, self.err)
   }
@@ -419,11 +414,9 @@ pub fn read(self : Reader, p : Slice[Byte]) -> (Int, IOError?) {
   return (n, None)
 }
 
-// Close closes the [Reader]. It does not close the underlying [io.Reader].
-// In order for the GZIP checksum to be verified, the reader must be
-// fully consumed until the [ioeof].
-///|
-pub fn close(self : Reader) -> IOError? {
-  guard let None = self.decompressor.close() else { e => return e }
-  None
+///| Close closes the [Reader]. It does not close the underlying [io.Reader].
+/// In order for the GZIP checksum to be verified, the reader must be
+/// fully consumed until the [ioeof].
+pub impl @io.ReadCloser for Reader with close(self) {
+  self.decompressor.close()
 }
