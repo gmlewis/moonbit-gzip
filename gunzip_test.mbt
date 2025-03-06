@@ -322,7 +322,7 @@ test "decompressor by resetting the reader" {
   for tt in gunzip_tests {
     // Test NewReader.
     let inp = @io.Buffer::new()
-    guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
+    guard inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
     let (r2, err) = @gzip.Reader::new(inp)
     match err {
       Some(e) => raise e
@@ -331,14 +331,15 @@ test "decompressor by resetting the reader" {
     }
     // defer r2.Close()  // TODO
     if tt.name != r2.header.name {
-      guard let None = r2.close()
+      guard r2.close() is None
       assert_eq!(tt.name, r2.header.name)
     }
     b.reset()
     try {
-      guard let (_, None) = @io.copy(b, r2) else { (_, Some(e)) => raise e }
+      let (_, err) = @io.copy(b, r2)
+      guard err is None else { raise err.unwrap() }
       // expected success, got success
-      guard let None = tt.err else { Some(e) => raise e }
+      guard tt.err is None else { raise tt.err.unwrap() }
 
     } catch {
       e => // assert_eq!(e, tt.err)  // TODO: IOErrors _CAN_ be compared!!! FIX.
@@ -352,7 +353,7 @@ test "decompressor by resetting the reader" {
 
     // Test Reader.Reset.
     let inp = @io.Buffer::new()
-    guard let (_, None) = inp.write_bytes(Bytes::from_array(tt.gzip))
+    guard inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
     let err = r1.reset(inp)
     match err {
       Some(e) => raise e
@@ -360,14 +361,15 @@ test "decompressor by resetting the reader" {
       _ => ()
     }
     if tt.name != r2.header.name {
-      guard let None = r2.close()
+      guard r2.close() is None
       assert_eq!(tt.name, r1.header.name)
     }
     b.reset()
     try {
-      guard let (_, None) = @io.copy(b, r1) else { (_, Some(e)) => raise e }
+      let (_, err) = @io.copy(b, r1)
+      guard err is None else { raise err.unwrap() }
       // expected success, got success
-      guard let None = tt.err else { Some(e) => raise e }
+      guard tt.err is None else { raise tt.err.unwrap() }
 
     } catch {
       e =>
