@@ -139,7 +139,7 @@ fn write_string(self : Writer, s : String) -> IOError? {
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
 ///|
-pub fn write(self : Writer, p : Slice[Byte]) -> (Int, IOError?) {
+pub impl @io.Writer for Writer with write(self, p) {
   match self.err {
     Some(_) => return (0, self.err)
     _ => ()
@@ -251,7 +251,7 @@ pub fn flush(self : Writer) -> IOError? {
 ///| close closes the [Writer] by flushing any unwritten data to the underlying
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
-pub fn Writer::close(self : Writer) -> IOError? {
+pub impl @io.Closer for Writer with close(self) {
   guard self.err is None else { return self.err }
   if self.closed {
     return None

@@ -102,10 +102,10 @@ pub(all) struct Reader {
 }
 
 ///| Reader implements the &io.Reader and &io.ReadCloser traits.
-let _interface1 : &@io.Reader = Reader::new(@io.Buffer::new()).0
+let _trait1 : &@io.Reader = Reader::new(@io.Buffer::new()).0
 
 ///|
-let _interface2 : &@io.ReadCloser = Reader::new(@io.Buffer::new()).0
+let _trait2 : &@io.ReadCloser = Reader::new(@io.Buffer::new()).0
 
 ///| NewReader creates a new [IOReader] reading the given reader.
 ///
@@ -357,7 +357,7 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 }
 
 ///| Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
-pub impl @io.ReadCloser for Reader with read(self, p) {
+pub impl @io.Reader for Reader with read(self, p) {
   if not(self.err.is_empty()) {
     return (0, self.err)
   }
@@ -417,6 +417,6 @@ pub impl @io.ReadCloser for Reader with read(self, p) {
 ///| Close closes the [Reader]. It does not close the underlying [io.Reader].
 /// In order for the GZIP checksum to be verified, the reader must be
 /// fully consumed until the [ioeof].
-pub impl @io.ReadCloser for Reader with close(self) {
+pub impl @io.Closer for Reader with close(self) {
   self.decompressor.close()
 }

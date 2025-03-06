@@ -37,12 +37,12 @@ pub(all) struct Reader {
   // private fields
 }
 impl Reader {
-  close(Self) -> @io.IOError?
   multistream(Self, Bool) -> Unit
   new(&@flate.Reader) -> (Self, @io.IOError?)
-  read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
   reset(Self, &@flate.Reader) -> @io.IOError?
 }
+impl @io.Closer for Reader
+impl @io.Reader for Reader
 
 pub(all) struct Writer {
   header : Header
@@ -57,11 +57,11 @@ pub(all) struct Writer {
   err : @io.IOError?
 }
 impl Writer {
-  close(Self) -> @io.IOError?
   flush(Self) -> @io.IOError?
   new(&@io.Writer) -> Self
-  write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
 }
+impl @io.Closer for Writer
+impl @io.Writer for Writer
 
 // Type aliases
 
