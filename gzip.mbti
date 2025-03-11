@@ -13,7 +13,13 @@ let err_header : @io.IOError
 
 let err_unexpected_eof : @io.IOError
 
+fn flush(Writer) -> @io.IOError?
+
 let ioeof : @io.IOError
+
+fn multistream(Reader, Bool) -> Unit
+
+fn reset(Reader, &@flate.Reader) -> @io.IOError?
 
 // Types and methods
 pub(all) type CompressionLevel Int
