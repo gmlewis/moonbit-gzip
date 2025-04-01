@@ -1,8 +1,10 @@
-package gmlewis/gzip
+package "gmlewis/gzip"
 
-alias @gmlewis/flate as @flate
-alias @gmlewis/io as @io
-alias @moonbitlang/x/time as @time
+import(
+  "gmlewis/flate"
+  "gmlewis/io"
+  "moonbitlang/x/time"
+)
 
 // Values
 let best_speed : CompressionLevel
@@ -28,18 +30,18 @@ impl Eq for CompressionLevel
 impl Show for CompressionLevel
 
 pub(all) struct Header {
-  comment : String
-  extra : Array[Byte]
-  mod_time : @time.PlainDateTime?
-  name : String
-  os : Byte
+  mut comment : String
+  mut extra : Array[Byte]
+  mut mod_time : @time.PlainDateTime?
+  mut name : String
+  mut os : Byte
 }
 impl Header {
   new() -> Self
 }
 
 pub(all) struct Reader {
-  header : Header
+  mut header : Header
   // private fields
 }
 impl Reader {
@@ -54,13 +56,13 @@ pub(all) struct Writer {
   header : Header
   w : &@io.Writer
   level : CompressionLevel
-  wrote_header : Bool
-  closed : Bool
-  buf : Array[Byte]
-  compressor : &@io.WriteCloser
-  digest : UInt
-  size : UInt
-  err : @io.IOError?
+  mut wrote_header : Bool
+  mut closed : Bool
+  mut buf : Array[Byte]
+  mut compressor : &@io.WriteCloser
+  mut digest : UInt
+  mut size : UInt
+  mut err : @io.IOError?
 }
 impl Writer {
   flush(Self) -> @io.IOError?
