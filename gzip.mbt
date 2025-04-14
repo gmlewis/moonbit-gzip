@@ -21,7 +21,8 @@ pub let best_speed : CompressionLevel = 1
 
 // pub let best_compression : CompressionLevel = 9
 
-///| Writes to a Writer are compressed and written to w.
+///|
+/// Writes to a Writer are compressed and written to w.
 pub(all) struct Writer {
   header : Header // written at first call to Write, Flush, or Close
   w : &@io.Writer
@@ -40,7 +41,8 @@ fn gzip_error(s : String) -> IOError {
   IOError(s)
 }
 
-///| Writer::new returns a new [IOWriter] using the optional compression level
+///|
+/// Writer::new returns a new [IOWriter] using the optional compression level
 /// (or `default_compression`).
 /// Writes to the returned writer are compressed and written to w.
 ///
@@ -99,7 +101,8 @@ fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
 //   le_put_uint32(b, offset + 4, ((value >> 32) & 0xffffffff).to_uint())
 // }
 
-///| write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
+///|
+/// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
 fn write_string(self : Writer, s : String) -> IOError? {
   let ch = s.to_array()
@@ -225,7 +228,8 @@ pub impl @io.Writer for Writer with write(self, p) {
   (n, err)
 }
 
-///| flush flushes any pending compressed data to the underlying writer.
+///|
+/// flush flushes any pending compressed data to the underlying writer.
 ///
 /// It is useful mainly in compressed network protocols, to ensure that
 /// a remote reader has enough data to reconstruct a packet. Flush does
@@ -248,7 +252,8 @@ pub fn flush(self : Writer) -> IOError? {
   None
 }
 
-///| close closes the [Writer] by flushing any unwritten data to the underlying
+///|
+/// close closes the [Writer] by flushing any unwritten data to the underlying
 /// [io.Writer] and writing the GZIP footer.
 /// It does not close the underlying [io.Writer].
 pub impl @io.Closer for Writer with close(self) {

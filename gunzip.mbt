@@ -38,10 +38,12 @@ typealias Slice[T] = @io.Slice[T]
 ///|
 typealias IOError = @io.IOError
 
-///| err_checksum is returned when reading GZIP data that has an invalid checksum.
+///|
+/// err_checksum is returned when reading GZIP data that has an invalid checksum.
 pub let err_checksum : IOError = IOError("gzip: invalid checksum")
 
-///| err_header is returned when reading GZIP data that has an invalid header.
+///|
+/// err_header is returned when reading GZIP data that has an invalid header.
 pub let err_header : IOError = IOError("gzip: invalid header")
 
 ///|
@@ -50,7 +52,8 @@ pub let err_unexpected_eof : IOError = @io.err_unexpected_eof
 ///|
 pub let ioeof : IOError = @io.eof
 
-///| no_eof converts ioeof to io.err_unexpected_eof.
+///|
+/// no_eof converts ioeof to io.err_unexpected_eof.
 fn no_eof(err : IOError) -> IOError {
   if ioeof == err {
     return err_unexpected_eof
@@ -58,7 +61,8 @@ fn no_eof(err : IOError) -> IOError {
   err
 }
 
-///| The gzip file stores a header giving metadata about the compressed file.
+///|
+/// The gzip file stores a header giving metadata about the compressed file.
 /// That header is exposed as the fields of the [Writer] and [Reader] structs.
 ///
 /// Strings must be UTF-8 encoded and may only contain Unicode code points
@@ -76,7 +80,8 @@ pub fn Header::new() -> Header {
   { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
 }
 
-///| A Reader is an [IOReadCloser] that can be read to retrieve
+///|
+/// A Reader is an [IOReadCloser] that can be read to retrieve
 /// uncompressed data from a gzip-format compressed file.
 ///
 /// In general, a gzip file can be a concatenation of gzip files,
@@ -101,13 +106,15 @@ pub(all) struct Reader {
   priv mut multistream : Bool
 }
 
-///| Reader implements the &io.Reader and &io.ReadCloser traits.
+///|
+/// Reader implements the &io.Reader and &io.ReadCloser traits.
 let _trait1 : &@io.Reader = Reader::new(@io.Buffer::new()).0
 
 ///|
 let _trait2 : &@io.ReadCloser = Reader::new(@io.Buffer::new()).0
 
-///| NewReader creates a new [IOReader] reading the given reader.
+///|
+/// NewReader creates a new [IOReader] reading the given reader.
 ///
 /// It is the caller's responsibility to call Close on the [Reader] when done.
 ///
@@ -143,7 +150,8 @@ pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
   return self.err
 }
 
-///| Multistream controls whether the reader supports multistream files.
+///|
+/// Multistream controls whether the reader supports multistream files.
 ///
 /// If enabled (the default), the [Reader] expects the input to be a sequence
 /// of individually gzipped data streams, each with its own header and
@@ -163,7 +171,8 @@ pub fn multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
 
-///| read_string reads a NUL-terminated string from self.r.
+///|
+/// read_string reads a NUL-terminated string from self.r.
 /// It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
 /// will output a MoonBit String encoded using UTF-16.
 /// This method always updates self.digest with the data read.
@@ -246,7 +255,8 @@ test "internal functions for converting to and from Latin-1" {
   assert_eq!(s, latin1)
 }
 
-///| read_header reads the GZIP header according to section 2.3.1.
+///|
+/// read_header reads the GZIP header according to section 2.3.1.
 /// This method does not set self.err.
 fn read_header(self : Reader) -> (Header, IOError?) {
   // RFC 1952, section 2.2, says the following:
@@ -356,7 +366,8 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
   (b[3].to_uint() << 24)
 }
 
-///| Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
+///|
+/// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
 pub impl @io.Reader for Reader with read(self, p) {
   if not(self.err.is_empty()) {
     return (0, self.err)
@@ -414,7 +425,8 @@ pub impl @io.Reader for Reader with read(self, p) {
   return (n, None)
 }
 
-///| Close closes the [Reader]. It does not close the underlying [io.Reader].
+///|
+/// Close closes the [Reader]. It does not close the underlying [io.Reader].
 /// In order for the GZIP checksum to be verified, the reader must be
 /// fully consumed until the [ioeof].
 pub impl @io.Closer for Reader with close(self) {
