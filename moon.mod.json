@@ -1,6 +1,6 @@
 {
   "name": "gmlewis/gzip",
-  "version": "0.33.9",
+  "version": "0.33.10",
   "deps": {
     "gmlewis/base64": "0.14.4",
     "gmlewis/crc32": "0.8.4",

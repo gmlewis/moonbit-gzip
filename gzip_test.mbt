@@ -70,14 +70,13 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
   let test_cases = [
     ("", true),
     ("ASCII is OK", true),
-    ("unless it contains a NUL\x00", false),
-    ("no matter where \x00 occurs", false),
-    ("\x00\x00\x00", false),
+    ("unless it contains a NUL\u{00}", false),
+    ("no matter where \u{00} occurs", false),
+    ("\u{00}\u{00}\u{00}", false),
     ("Látin-1 also passes (U+00E1)", true),
     ("but LĀtin Extended-A (U+0100) does not", false),
     ("neither does 日本語", false),
-    ("invalid UTF-8 also \xffails", false),
-    ("\x00 as does Látin-1 with NUL", false),
+    ("\u{00} as does Látin-1 with NUL", false),
   ]
   for tc in test_cases {
     let buf = @io.Buffer::new()
