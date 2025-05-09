@@ -17,7 +17,7 @@ The code has been updated to support compiler:
 
 ```bash
 $ moon version --all
-moon 0.1.20250428 (a65ec7f 2025-04-28) ~/.moon/bin/moon
-moonc v0.1.20250429+d96028625 ~/.moon/bin/moonc
-moonrun 0.1.20250428 (a65ec7f 2025-04-28) ~/.moon/bin/moonrun
+moon 0.1.20250507 (9e0b1f2 2025-05-07) ~/.moon/bin/moon
+moonc v0.1.20250508+ae9fa770e ~/.moon/bin/moonc
+moonrun 0.1.20250507 (9e0b1f2 2025-05-07) ~/.moon/bin/moonrun
 ```
