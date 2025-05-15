@@ -198,7 +198,7 @@ fn read_string(self : Reader) -> (String, IOError?) {
       if need_conv {
         let s = Array::new(capacity=i)
         for v in self.buf[:i] {
-          s.push(Char::from_int(v.to_int()))
+          s.push(Int::unsafe_to_char(v.to_int()))
         }
         return (String::from_array(s), None)
       }
