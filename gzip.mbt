@@ -120,17 +120,15 @@ fn write_string(self : Writer, s : String) -> IOError? {
   if needconv {
     let b = Slice::new(Array::make(s.length(), b'\x00'))
     for i in 0..<s.length() {
-      let v = s[i]
-      b[i] = (v.to_uint() & 0xff).to_byte()
+      let v = s.unsafe_charcode_at(i)
+      b[i] = (v.reinterpret_as_uint() & 0xff).to_byte()
     }
     let (_, err) = self.w.write(b)
     guard err is None else { return err }
-
   } else {
     let b = @base64.str2bytes(s).to_array()
     let (_, err) = self.w.write(Slice::new(b))
     guard err is None else { return err }
-
   }
 
   // GZIP strings are NUL-terminated.
@@ -194,7 +192,6 @@ pub impl @io.Writer for Writer with write(self, p) {
           self.err = err
           return (0, err)
         }
-
       }
     }
     if self.header.name != "" {
@@ -203,7 +200,6 @@ pub impl @io.Writer for Writer with write(self, p) {
         self.err = err
         return (0, err)
       }
-
     }
     if self.header.comment != "" {
       let err = self.write_string(self.header.comment)
@@ -211,7 +207,6 @@ pub impl @io.Writer for Writer with write(self, p) {
         self.err = err
         return (0, err)
       }
-
     }
     // if z.compressor == nil {
     // 	log.Printf("GML: gzip.go: Write: header: W")
@@ -245,7 +240,6 @@ pub fn flush(self : Writer) -> IOError? {
   if not(self.wrote_header) {
     let (_, err) = self.write(Slice::new([b'\x00']))
     guard err is None else { return err }
-
   }
   // The simplified flate compressor has no flush method.
   // self.err = self.compressor.flush()
@@ -265,7 +259,6 @@ pub impl @io.Closer for Writer with close(self) {
   if not(self.wrote_header) {
     let (_, err) = self.write(Slice::new([]))
     guard err is None else { return err }
-
   }
   self.err = self.compressor.close()
   le_put_uint32(self.buf, 0, self.digest)

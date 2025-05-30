@@ -340,7 +340,6 @@ test "decompressor by resetting the reader" {
       guard err is None else { raise err.unwrap() }
       // expected success, got success
       guard tt.err is None else { raise tt.err.unwrap() }
-
     } catch {
       e => // assert_eq!(e, tt.err)  // TODO: IOErrors _CAN_ be compared!!! FIX.
         match (e, tt.err) {
@@ -370,7 +369,6 @@ test "decompressor by resetting the reader" {
       guard err is None else { raise err.unwrap() }
       // expected success, got success
       guard tt.err is None else { raise tt.err.unwrap() }
-
     } catch {
       e =>
         match (e, tt.err) {

@@ -26,7 +26,6 @@ test "empty payload still forms a valid GZIP stream" {
   guard @io.read_all(r) is (b, None)
   inspect!(b.length(), content="0")
   guard r.close() is None
-
 }
 
 ///|
@@ -61,7 +60,6 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   assert_eq!(t.to_unix_second(), 100_000_000)
   assert_eq!(r.header.name, "name")
   guard r.close() is None
-
 }
 
 ///|
@@ -97,7 +95,6 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     let _ = @io.read_all(r)
     assert_eq!(r.header.name, tc.0)
     guard r.close() is None
-
   }
 }
 

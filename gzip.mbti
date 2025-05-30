@@ -36,19 +36,15 @@ pub(all) struct Header {
   mut name : String
   mut os : Byte
 }
-impl Header {
-  new() -> Self
-}
+fn Header::new() -> Self
 
 pub(all) struct Reader {
   mut header : Header
   // private fields
 }
-impl Reader {
-  multistream(Self, Bool) -> Unit
-  new(&@flate.Reader) -> (Self, @io.IOError?)
-  reset(Self, &@flate.Reader) -> @io.IOError?
-}
+fn Reader::multistream(Self, Bool) -> Unit
+fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
+fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
 impl @io.Closer for Reader
 impl @io.Reader for Reader
 
@@ -64,10 +60,8 @@ pub(all) struct Writer {
   mut size : UInt
   mut err : @io.IOError?
 }
-impl Writer {
-  flush(Self) -> @io.IOError?
-  new(&@io.Writer) -> Self
-}
+fn Writer::flush(Self) -> @io.IOError?
+fn Writer::new(&@io.Writer) -> Self
 impl @io.Closer for Writer
 impl @io.Writer for Writer
 
