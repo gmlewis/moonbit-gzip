@@ -8,7 +8,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-typealias IOError = @io.IOError
+typealias @io.IOError
 
 ///|
 struct GunzipTest {

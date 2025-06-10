@@ -33,10 +33,10 @@ let flag_comment : Byte = b'\x10'
 // var le = binary.LittleEndian
 
 ///|
-typealias Slice[T] = @io.Slice[T]
+typealias @io.Slice
 
 ///|
-typealias IOError = @io.IOError
+typealias @io.IOError
 
 ///|
 /// err_checksum is returned when reading GZIP data that has an invalid checksum.
