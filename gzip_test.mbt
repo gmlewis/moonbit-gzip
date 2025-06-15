@@ -20,11 +20,11 @@ test "empty payload still forms a valid GZIP stream" {
   //
   let (r, err) = @gzip.Reader::new(buf)
   guard err is None
-  inspect!(r.header.os.to_int(), content="255")
+  inspect(r.header.os.to_int(), content="255")
 
   //
   guard @io.read_all(r) is (b, None)
-  inspect!(b.length(), content="0")
+  inspect(b.length(), content="0")
   guard r.close() is None
 }
 
@@ -36,7 +36,7 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   //
   w.header.comment = "comment"
   w.header.extra = b"extra".to_array()
-  let t = @time.PlainDateTime::from_unix_second!(
+  let t = @time.PlainDateTime::from_unix_second(
     100_000_000, 0, @time.utc_offset,
   )
   w.header.mod_time = Some(t)
@@ -49,16 +49,16 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   //
   let (r, err) = @gzip.Reader::new(buf)
   guard err is None
-  inspect!(r.header.os.to_int(), content="255")
+  inspect(r.header.os.to_int(), content="255")
 
   //
   guard @io.read_all(r) is (b, None)
-  assert_eq!(b.to_bytes(), b"payload")
-  assert_eq!(r.header.comment, "comment")
-  assert_eq!(r.header.extra, b"extra".to_array())
+  assert_eq(b.to_bytes(), b"payload")
+  assert_eq(r.header.comment, "comment")
+  assert_eq(r.header.extra, b"extra".to_array())
   guard r.header.mod_time is Some(t)
-  assert_eq!(t.to_unix_second(), 100_000_000)
-  assert_eq!(r.header.name, "name")
+  assert_eq(t.to_unix_second(), 100_000_000)
+  assert_eq(r.header.name, "name")
   guard r.close() is None
 }
 
@@ -93,7 +93,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     //
     guard @gzip.Reader::new(buf) is (r, None)
     let _ = @io.read_all(r)
-    assert_eq!(r.header.name, tc.0)
+    assert_eq(r.header.name, tc.0)
     guard r.close() is None
   }
 }
@@ -106,40 +106,40 @@ test "writer flush" {
   let w = @gzip.Writer::new(buf)
   w.header.comment = "comment"
   w.header.extra = b"extra".to_array()
-  let t = @time.PlainDateTime::from_unix_second!(
+  let t = @time.PlainDateTime::from_unix_second(
     100_000_000, 0, @time.utc_offset,
   )
   w.header.mod_time = Some(t)
   w.header.name = "name"
 
   // no data after first flush
-  assert_eq!(buf.to_bytes().length(), 0)
+  assert_eq(buf.to_bytes().length(), 0)
 
   //
   guard w.flush() is None
 
   // expect data after first flush
-  assert_eq!(buf.to_bytes().length(), 30)
+  assert_eq(buf.to_bytes().length(), 30)
 
   //
   guard w.write(Slice::new([b'x'])) is (n, None)
-  assert_eq!(n, 1)
+  assert_eq(n, 1)
 
   //
   // after writing a single byte, want no change to size
-  assert_eq!(buf.to_bytes().length(), 30)
+  assert_eq(buf.to_bytes().length(), 30)
 
   //
   guard w.flush() is None
 
   // since the simplified flate compressor has no flush, there is no change.
-  assert_eq!(buf.to_bytes().length(), 30)
+  assert_eq(buf.to_bytes().length(), 30)
 
   //
   guard w.close() is None
 
   // final output should match after flush
-  assert_eq!(buf.to_bytes().length(), 50)
+  assert_eq(buf.to_bytes().length(), 50)
 }
 
 ///|
@@ -156,5 +156,5 @@ test "multiple gzip files concatenated form a valid gzip file" {
   let (r, err) = @gzip.Reader::new(buf)
   guard err is None
   guard @io.read_all(r) is (data, None)
-  assert_eq!(data.to_bytes(), b"hello world\n")
+  assert_eq(data.to_bytes(), b"hello world\n")
 }

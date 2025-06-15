@@ -236,7 +236,7 @@ test "internal functions for converting to and from Latin-1" {
     multistream: false,
   }
   guard z.read_string() is (s, None)
-  assert_eq!(s, utf16)
+  assert_eq(s, utf16)
   let w = @io.Buffer::new()
   let c : Writer = {
     header: Header::new(),
@@ -252,7 +252,7 @@ test "internal functions for converting to and from Latin-1" {
   }
   guard c.write_string(utf16) is None
   let s = w.to_bytes().to_array()
-  assert_eq!(s, latin1)
+  assert_eq(s, latin1)
 }
 
 ///|
@@ -283,7 +283,7 @@ fn read_header(self : Reader) -> (Header, IOError?) {
     // Section 2.3.1, the zero value for MTIME means that the
     // modified time is not set.
     try {
-      let mod_time = @time.PlainDateTime::from_unix_second!(
+      let mod_time = @time.PlainDateTime::from_unix_second(
         t, 0, @time.utc_offset,
       )
       hdr.mod_time = Some(mod_time)

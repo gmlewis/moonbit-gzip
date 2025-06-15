@@ -332,7 +332,7 @@ test "decompressor by resetting the reader" {
     // defer r2.Close()  // TODO
     if tt.name != r2.header.name {
       guard r2.close() is None
-      assert_eq!(tt.name, r2.header.name)
+      assert_eq(tt.name, r2.header.name)
     }
     b.reset()
     try {
@@ -344,11 +344,11 @@ test "decompressor by resetting the reader" {
       e => // assert_eq!(e, tt.err)  // TODO: IOErrors _CAN_ be compared!!! FIX.
         match (e, tt.err) {
           (_, Some(_)) => () // expected (SOME?!?!?) error, got (SOME?!?!?) error, proceed
-          _ => fail!("\{tt.desc} got error, but expected no error")
+          _ => fail("\{tt.desc} got error, but expected no error")
         }
     }
     let s = @base64.bytes2str(b.to_bytes())
-    assert_eq!(s, tt.raw)
+    assert_eq(s, tt.raw)
 
     // Test Reader.Reset.
     let inp = @io.Buffer::new()
@@ -361,7 +361,7 @@ test "decompressor by resetting the reader" {
     }
     if tt.name != r2.header.name {
       guard r2.close() is None
-      assert_eq!(tt.name, r1.header.name)
+      assert_eq(tt.name, r1.header.name)
     }
     b.reset()
     try {
@@ -373,11 +373,11 @@ test "decompressor by resetting the reader" {
       e =>
         match (e, tt.err) {
           (_, Some(_)) => () // expected error, got error, proceed
-          _ => fail!("\{tt.desc} got error, but expected no error")
+          _ => fail("\{tt.desc} got error, but expected no error")
         }
     }
     let s = @base64.bytes2str(b.to_bytes())
-    assert_eq!(s, tt.raw)
+    assert_eq(s, tt.raw)
 
     //
   }
