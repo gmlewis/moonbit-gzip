@@ -68,8 +68,8 @@ pub fn Writer::new(w : &@io.Writer) -> Writer {
   }
 }
 
-// write_bytes writes a length-prefixed byte slice to self.w.
 ///|
+// write_bytes writes a length-prefixed byte slice to self.w.
 fn write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
   if b.length() > 0xffff {
     return Some(gzip_error("gzip.Write: Extra data is too large"))
@@ -137,9 +137,9 @@ fn write_string(self : Writer, s : String) -> IOError? {
   None
 }
 
+///|
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
-///|
 pub impl @io.Writer for Writer with write(self, p) {
   match self.err {
     Some(_) => return (0, self.err)

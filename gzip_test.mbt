@@ -83,7 +83,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     let w = @gzip.Writer::new(buf)
     w.header.name = tc.0
     let err = w.close()
-    if err == None != tc.1 {
+    if (err == None) != tc.1 {
       abort("Writer.Close: name = '\{tc.0}', err = \{err}")
     }
     if not(tc.1) {
