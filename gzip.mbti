@@ -18,6 +18,8 @@ let err_unexpected_eof : @io.IOError
 
 let ioeof : @io.IOError
 
+// Errors
+
 // Types and methods
 pub(all) type CompressionLevel Int
 fn CompressionLevel::inner(Self) -> Int
