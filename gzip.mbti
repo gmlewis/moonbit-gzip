@@ -21,7 +21,7 @@ let ioeof : @io.IOError
 // Errors
 
 // Types and methods
-pub(all) type CompressionLevel Int
+pub(all) struct CompressionLevel(Int)
 fn CompressionLevel::inner(Self) -> Int
 impl Compare for CompressionLevel
 impl Eq for CompressionLevel

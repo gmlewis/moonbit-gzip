@@ -8,7 +8,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-pub(all) type CompressionLevel Int derive(Show, Compare, Eq)
+pub(all) struct CompressionLevel(Int) derive(Show, Compare, Eq)
 
 // pub let huffman_only : CompressionLevel = -2
 
