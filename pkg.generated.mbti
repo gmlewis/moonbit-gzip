@@ -1,0 +1,69 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "gmlewis/gzip"
+
+import(
+  "gmlewis/flate"
+  "gmlewis/io"
+  "moonbitlang/x/time"
+)
+
+// Values
+let best_speed : CompressionLevel
+
+let err_checksum : @io.IOError
+
+let err_header : @io.IOError
+
+let err_unexpected_eof : @io.IOError
+
+let ioeof : @io.IOError
+
+// Errors
+
+// Types and methods
+pub(all) struct CompressionLevel(Int)
+fn CompressionLevel::inner(Self) -> Int
+impl Compare for CompressionLevel
+impl Eq for CompressionLevel
+impl Show for CompressionLevel
+
+pub(all) struct Header {
+  mut comment : String
+  mut extra : Array[Byte]
+  mut mod_time : @time.PlainDateTime?
+  mut name : String
+  mut os : Byte
+}
+fn Header::new() -> Self
+
+pub(all) struct Reader {
+  mut header : Header
+  // private fields
+}
+fn Reader::multistream(Self, Bool) -> Unit
+fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
+fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
+impl @io.Closer for Reader
+impl @io.Reader for Reader
+
+pub(all) struct Writer {
+  header : Header
+  w : &@io.Writer
+  level : CompressionLevel
+  mut wrote_header : Bool
+  mut closed : Bool
+  mut buf : Array[Byte]
+  mut compressor : &@io.WriteCloser
+  mut digest : UInt
+  mut size : UInt
+  mut err : @io.IOError?
+}
+fn Writer::flush(Self) -> @io.IOError?
+fn Writer::new(&@io.Writer) -> Self
+impl @io.Closer for Writer
+impl @io.Writer for Writer
+
+// Type aliases
+
+// Traits
+
