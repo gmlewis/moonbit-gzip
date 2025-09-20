@@ -1,11 +1,11 @@
 {
   "name": "gmlewis/gzip",
-  "version": "0.33.21",
+  "version": "0.33.22",
   "deps": {
-    "gmlewis/base64": "0.14.13",
-    "gmlewis/crc32": "0.8.10",
-    "gmlewis/flate": "0.35.20",
-    "gmlewis/io": "0.22.12",
+    "gmlewis/base64": "0.15.0",
+    "gmlewis/crc32": "0.8.11",
+    "gmlewis/flate": "0.35.21",
+    "gmlewis/io": "0.22.13",
     "moonbitlang/x": "0.4.34"
   },
   "readme": "README.md",
