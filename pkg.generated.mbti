@@ -22,8 +22,14 @@ let ioeof : @io.IOError
 
 // Types and methods
 pub(all) struct CompressionLevel(Int)
+fn CompressionLevel::compare(Self, Self) -> Int // from trait `Compare`
+fn CompressionLevel::equal(Self, Self) -> Bool // from trait `Eq`
 #deprecated
 fn CompressionLevel::inner(Self) -> Int
+#deprecated
+fn CompressionLevel::op_equal(Self, Self) -> Bool // from trait `Eq`
+fn CompressionLevel::output(Self, &Logger) -> Unit // from trait `Show`
+fn CompressionLevel::to_string(Self) -> String // from trait `Show`
 impl Compare for CompressionLevel
 impl Eq for CompressionLevel
 impl Show for CompressionLevel
@@ -41,8 +47,10 @@ pub(all) struct Reader {
   mut header : Header
   // private fields
 }
+fn Reader::close(Self) -> @io.IOError? // from trait `@io.Closer`
 fn Reader::multistream(Self, Bool) -> Unit
 fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
+fn Reader::read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?) // from trait `@io.Reader`
 fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
 impl @io.Closer for Reader
 impl @io.Reader for Reader
@@ -59,8 +67,10 @@ pub(all) struct Writer {
   mut size : UInt
   mut err : @io.IOError?
 }
+fn Writer::close(Self) -> @io.IOError? // from trait `@io.Closer`
 fn Writer::flush(Self) -> @io.IOError?
 fn Writer::new(&@io.Writer) -> Self
+fn Writer::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?) // from trait `@io.Writer`
 impl @io.Closer for Writer
 impl @io.Writer for Writer
 
