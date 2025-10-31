@@ -33,10 +33,10 @@ let flag_comment : Byte = b'\x10'
 // var le = binary.LittleEndian
 
 ///|
-typealias @io.Slice
+using @io {type Slice}
 
 ///|
-typealias @io.IOError
+using @io {type IOError}
 
 ///|
 /// err_checksum is returned when reading GZIP data that has an invalid checksum.
@@ -138,7 +138,7 @@ pub fn Reader::new(r : &@flate.Reader) -> (Reader, IOError?) {
 /// Reset discards the [Reader] z's state and makes it equivalent to the
 /// result of its original state from [NewReader], but reading from r instead.
 /// This permits reusing a [Reader] rather than allocating a new one.
-pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
+pub fn Reader::reset(self : Reader, r : &@flate.Reader) -> IOError? {
   self.r = r
   self.digest = @crc32.Digest::new()
   self.size = 0
@@ -167,7 +167,7 @@ pub fn reset(self : Reader, r : &@flate.Reader) -> IOError? {
 /// in order to be left positioned just after the gzip stream.
 /// To start the next stream, call self.Reset(r) followed by self.Multistream(false).
 /// If there is no next stream, self.Reset(r) will return [ioeof].
-pub fn multistream(self : Reader, ok : Bool) -> Unit {
+pub fn Reader::multistream(self : Reader, ok : Bool) -> Unit {
   self.multistream = ok
 }
 
@@ -176,7 +176,7 @@ pub fn multistream(self : Reader, ok : Bool) -> Unit {
 /// It treats the bytes read as being encoded as ISO 8859-1 (Latin-1) and
 /// will output a MoonBit String encoded using UTF-16.
 /// This method always updates self.digest with the data read.
-fn read_string(self : Reader) -> (String, IOError?) {
+fn Reader::read_string(self : Reader) -> (String, IOError?) {
   let mut need_conv = false
   for i = 0; true; i = i + 1 {
     if i >= self.buf.length() {
@@ -258,7 +258,7 @@ test "internal functions for converting to and from Latin-1" {
 ///|
 /// read_header reads the GZIP header according to section 2.3.1.
 /// This method does not set self.err.
-fn read_header(self : Reader) -> (Header, IOError?) {
+fn Reader::read_header(self : Reader) -> (Header, IOError?) {
   // RFC 1952, section 2.2, says the following:
   //	A gzip file consists of a series of "members" (compressed data sets).
   //

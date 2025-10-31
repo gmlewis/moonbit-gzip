@@ -70,7 +70,7 @@ pub fn Writer::new(w : &@io.Writer) -> Writer {
 
 ///|
 // write_bytes writes a length-prefixed byte slice to self.w.
-fn write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
+fn Writer::write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
   if b.length() > 0xffff {
     return Some(gzip_error("gzip.Write: Extra data is too large"))
   }
@@ -104,7 +104,7 @@ fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
 ///|
 /// write_string converts a UTF-16 String to UTF-8 and writes the UTF-8 string in GZIP's format to self.w.
 /// GZIP (RFC 1952) specifies that strings are NUL-terminated ISO 8859-1 (Latin-1).
-fn write_string(self : Writer, s : String) -> IOError? {
+fn Writer::write_string(self : Writer, s : String) -> IOError? {
   let ch = s.to_array()
   // GZIP stores Latin-1 strings; error if non-Latin-1; convert if non-ASCII.
   let mut needconv = false
@@ -232,7 +232,7 @@ pub impl @io.Writer for Writer with write(self, p) {
 /// writer returns an error, Flush returns that error.
 ///
 /// In the terminology of the zlib library, Flush is equivalent to Z_SYNC_FLUSH.
-pub fn flush(self : Writer) -> IOError? {
+pub fn Writer::flush(self : Writer) -> IOError? {
   guard self.err is None else { return self.err }
   if self.closed {
     return None

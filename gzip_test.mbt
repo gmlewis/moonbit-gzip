@@ -8,7 +8,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-typealias @io.Slice
+using @io {type Slice}
 
 ///|
 test "empty payload still forms a valid GZIP stream" {
