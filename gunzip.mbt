@@ -369,7 +369,7 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 ///|
 /// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
 pub impl @io.Reader for Reader with read(self, p) {
-  if not(self.err.is_empty()) {
+  if not(self.err is None) {
     return (0, self.err)
   }
 
