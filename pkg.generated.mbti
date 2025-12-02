@@ -8,25 +8,25 @@ import(
 )
 
 // Values
-let best_speed : CompressionLevel
+pub let best_speed : CompressionLevel
 
-let err_checksum : @io.IOError
+pub let err_checksum : @io.IOError
 
-let err_header : @io.IOError
+pub let err_header : @io.IOError
 
-let err_unexpected_eof : @io.IOError
+pub let err_unexpected_eof : @io.IOError
 
-let ioeof : @io.IOError
+pub let ioeof : @io.IOError
 
 // Errors
 
 // Types and methods
 pub(all) struct CompressionLevel(Int)
 #deprecated
-fn CompressionLevel::inner(Self) -> Int
-impl Compare for CompressionLevel
-impl Eq for CompressionLevel
-impl Show for CompressionLevel
+pub fn CompressionLevel::inner(Self) -> Int
+pub impl Compare for CompressionLevel
+pub impl Eq for CompressionLevel
+pub impl Show for CompressionLevel
 
 pub(all) struct Header {
   mut comment : String
@@ -35,17 +35,17 @@ pub(all) struct Header {
   mut name : String
   mut os : Byte
 }
-fn Header::new() -> Self
+pub fn Header::new() -> Self
 
 pub(all) struct Reader {
   mut header : Header
   // private fields
 }
-fn Reader::multistream(Self, Bool) -> Unit
-fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
-fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
-impl @io.Closer for Reader
-impl @io.Reader for Reader
+pub fn Reader::multistream(Self, Bool) -> Unit
+pub fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
+pub fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
+pub impl @io.Closer for Reader
+pub impl @io.Reader for Reader
 
 pub(all) struct Writer {
   header : Header
@@ -59,10 +59,10 @@ pub(all) struct Writer {
   mut size : UInt
   mut err : @io.IOError?
 }
-fn Writer::flush(Self) -> @io.IOError?
-fn Writer::new(&@io.Writer) -> Self
-impl @io.Closer for Writer
-impl @io.Writer for Writer
+pub fn Writer::flush(Self) -> @io.IOError?
+pub fn Writer::new(&@io.Writer) -> Self
+pub impl @io.Closer for Writer
+pub impl @io.Writer for Writer
 
 // Type aliases
 
