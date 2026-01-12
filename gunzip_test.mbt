@@ -525,3 +525,28 @@ test "decompressor by resetting the reader" {
 // 		t.Errorf("Reader.Read: got %v, want %v", err, io.EOF)
 // 	}
 // }
+
+///|
+test "read_all from gunzip reader" {
+  // Use a larger data set to ensure multiple reads and buffer resizing in read_all
+  let data_str = "Hello, world! ".repeat(100)
+  let data = @base64.str2bytes(data_str)
+  let buf = @io.Buffer::new()
+  let zw = @gzip.Writer::new(buf)
+  let (n, err) = zw.write(@io.Slice::new(data.to_array()))
+  assert_eq(err, None)
+  assert_eq(n, data.length())
+  assert_eq(zw.close(), None)
+  let compressed = buf.to_bytes()
+  let breader = @io.Buffer::new()
+  let _ = breader.write_bytes(compressed)
+  let (zr, err2) = @gzip.Reader::new(breader)
+  assert_eq(err2, None)
+  let (decompressed, err3) = @io.read_all(zr)
+  assert_eq(err3, None)
+  assert_eq(decompressed.length(), data.length())
+
+  // Verify content
+  let decompressed_str = @base64.bytes2str(decompressed.to_bytes())
+  assert_eq(decompressed_str, data_str)
+}
