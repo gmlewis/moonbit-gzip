@@ -120,8 +120,8 @@ fn Writer::write_string(self : Writer, s : String) -> IOError? {
   if needconv {
     let b = Slice::new(Array::make(s.length(), b'\x00'))
     for i in 0..<s.length() {
-      let v = s.unsafe_charcode_at(i)
-      b[i] = (v.reinterpret_as_uint() & 0xff).to_byte()
+      let v = s.unsafe_get(i)
+      b[i] = (v & 0xff).to_byte()
     }
     let (_, err) = self.w.write(b)
     guard err is None else { return err }

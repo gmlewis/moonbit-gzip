@@ -1,11 +1,11 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "gmlewis/gzip"
 
-import(
-  "gmlewis/flate"
-  "gmlewis/io"
-  "moonbitlang/x/time"
-)
+import {
+  "gmlewis/flate",
+  "gmlewis/io",
+  "moonbitlang/x/time",
+}
 
 // Values
 pub let best_speed : CompressionLevel
