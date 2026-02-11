@@ -1,5 +1,5 @@
 #!/bin/bash -ex
-moon update && moon install && rm -rf target
+moon update && rm -rf target
 moon add moonbitlang/x
 moon fmt && moon info
-moon test --target all
+moon test -j 12 --target all
