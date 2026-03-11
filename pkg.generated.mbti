@@ -45,6 +45,7 @@ pub fn Reader::multistream(Self, Bool) -> Unit
 pub fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
 pub fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
 pub impl @io.Closer for Reader
+pub impl @io.ReadCloser for Reader
 pub impl @io.Reader for Reader
 
 pub(all) struct Writer {

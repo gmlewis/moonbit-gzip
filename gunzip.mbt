@@ -432,3 +432,6 @@ pub impl @io.Reader for Reader with read(self, p) {
 pub impl @io.Closer for Reader with close(self) {
   self.decompressor.close()
 }
+
+///|
+pub impl @io.ReadCloser for Reader
