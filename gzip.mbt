@@ -146,7 +146,7 @@ pub impl @io.Writer for Writer with write(self, p) {
     _ => ()
   }
   // Write the GZIP header lazily.
-  if not(self.wrote_header) {
+  if !self.wrote_header {
     self.wrote_header = true
     self.buf = Array::make(10, b'\x00')
     self.buf[0] = gzip_id1
@@ -237,7 +237,7 @@ pub fn Writer::flush(self : Writer) -> IOError? {
   if self.closed {
     return None
   }
-  if not(self.wrote_header) {
+  if !self.wrote_header {
     let (_, err) = self.write(Slice::new([b'\x00']))
     guard err is None else { return err }
   }
@@ -256,7 +256,7 @@ pub impl @io.Closer for Writer with close(self) {
     return None
   }
   self.closed = true
-  if not(self.wrote_header) {
+  if !self.wrote_header {
     let (_, err) = self.write(Slice::new([]))
     guard err is None else { return err }
   }

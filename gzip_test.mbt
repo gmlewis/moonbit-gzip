@@ -86,7 +86,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     if (err == None) != tc.1 {
       abort("Writer.Close: name = '\{tc.0}', err = \{err}")
     }
-    if not(tc.1) {
+    if !tc.1 {
       continue
     }
 
