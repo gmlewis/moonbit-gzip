@@ -1,12 +1,12 @@
 {
   "name": "gmlewis/gzip",
-  "version": "0.34.4",
+  "version": "0.34.5",
   "deps": {
-    "gmlewis/base64": "0.16.3",
+    "gmlewis/base64": "0.16.6",
     "gmlewis/crc32": "0.8.16",
-    "gmlewis/flate": "0.36.4",
-    "gmlewis/io": "0.23.4",
-    "moonbitlang/x": "0.4.41"
+    "gmlewis/flate": "0.36.5",
+    "gmlewis/io": "0.23.7",
+    "moonbitlang/x": "0.4.43"
   },
   "readme": "README.md",
   "repository": "https://github.com/gmlewis/moonbit-gzip",

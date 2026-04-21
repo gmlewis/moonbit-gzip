@@ -21,9 +21,7 @@ pub let ioeof : @io.IOError
 // Errors
 
 // Types and methods
-pub(all) struct CompressionLevel(Int) derive(Compare, Eq, Show)
-#deprecated
-pub fn CompressionLevel::inner(Self) -> Int
+pub(all) struct CompressionLevel(Int) derive(Compare, Eq)
 
 pub(all) struct Header {
   mut comment : String
