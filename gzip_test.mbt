@@ -55,7 +55,7 @@ test "roundtrip gzipping and then gunzipping is the identity function" {
   guard @io.read_all(r) is (b, None)
   assert_eq(b.to_bytes(), b"payload")
   assert_eq(r.header.comment, "comment")
-  assert_eq(r.header.extra, b"extra".to_array())
+  @debug.assert_eq(r.header.extra, b"extra".to_array())
   guard r.header.mod_time is Some(t)
   assert_eq(t.to_unix_second(), 100_000_000)
   assert_eq(r.header.name, "name")
@@ -84,7 +84,7 @@ test "latin1 roundtrip metadata that is representable in Latin-1 survives a roun
     w.header.name = tc.0
     let err = w.close()
     if (err == None) != tc.1 {
-      abort("Writer.Close: name = '\{tc.0}', err = \{err}")
+      abort("Writer.Close: name = '\{tc.0}', err = \{to_repr(err)}")
     }
     if !tc.1 {
       continue

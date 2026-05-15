@@ -3,5 +3,6 @@ import {
   "gmlewis/crc32",
   "gmlewis/flate",
   "gmlewis/io",
+  "moonbitlang/core/debug",
   "moonbitlang/x/time",
 }

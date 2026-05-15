@@ -252,7 +252,7 @@ test "internal functions for converting to and from Latin-1" {
   }
   guard c.write_string(utf16) is None
   let s = w.to_bytes().to_array()
-  assert_eq(s, latin1)
+  @debug.assert_eq(s, latin1)
 }
 
 ///|
