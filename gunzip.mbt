@@ -368,7 +368,7 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 
 ///|
 /// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
-pub impl @io.Reader for Reader with read(self, p) {
+pub impl @io.Reader for Reader with fn read(self, p) {
   if !(self.err is None) {
     return (0, self.err)
   }
@@ -429,7 +429,7 @@ pub impl @io.Reader for Reader with read(self, p) {
 /// Close closes the [Reader]. It does not close the underlying [io.Reader].
 /// In order for the GZIP checksum to be verified, the reader must be
 /// fully consumed until the [ioeof].
-pub impl @io.Closer for Reader with close(self) {
+pub impl @io.Closer for Reader with fn close(self) {
   self.decompressor.close()
 }
 
