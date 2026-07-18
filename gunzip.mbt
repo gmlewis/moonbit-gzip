@@ -376,7 +376,7 @@ pub impl @io.Reader for Reader with fn read(self, p) {
   //
   let mut n = 0
   while n == 0 {
-    let (tmpn, err) = self.decompressor.read(p)
+    let (tmpn, err) = @io.Reader::read(self.decompressor, p)
     n = tmpn
     self.err = err
     for i in 0..<n {
@@ -430,7 +430,7 @@ pub impl @io.Reader for Reader with fn read(self, p) {
 /// In order for the GZIP checksum to be verified, the reader must be
 /// fully consumed until the [ioeof].
 pub impl @io.Closer for Reader with fn close(self) {
-  self.decompressor.close()
+  @io.Closer::close(self.decompressor)
 }
 
 ///|

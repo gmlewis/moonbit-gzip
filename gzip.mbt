@@ -219,7 +219,7 @@ pub impl @io.Writer for Writer with fn write(self, p) {
     sum.write(b)
   }
   self.digest = sum.digest()
-  let (n, err) = self.compressor.write(p)
+  let (n, err) = @io.Writer::write(self.compressor, p)
   (n, err)
 }
 
@@ -260,7 +260,7 @@ pub impl @io.Closer for Writer with fn close(self) {
     let (_, err) = self.write(Slice::new([]))
     guard err is None else { return err }
   }
-  self.err = self.compressor.close()
+  self.err = @io.Closer::close(self.compressor)
   le_put_uint32(self.buf, 0, self.digest)
   le_put_uint32(self.buf, 4, self.size)
   let footer = Slice::new(self.buf)[:8]
