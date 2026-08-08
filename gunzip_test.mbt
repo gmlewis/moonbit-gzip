@@ -323,7 +323,7 @@ test "decompressor by resetting the reader" {
   for tt in gunzip_tests {
     // Test NewReader.
     let inp = @io.Buffer::new()
-    guard inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
+    guard! inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
     let (r2, err) = @gzip.Reader::new(inp)
     match err {
       Some(e) => raise e
@@ -332,7 +332,7 @@ test "decompressor by resetting the reader" {
     }
     // defer r2.Close()  // TODO
     if tt.name != r2.header.name {
-      guard r2.close() is None
+      guard! r2.close() is None
       assert_eq(tt.name, r2.header.name)
     }
     b.reset()
@@ -353,7 +353,7 @@ test "decompressor by resetting the reader" {
 
     // Test Reader.Reset.
     let inp = @io.Buffer::new()
-    guard inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
+    guard! inp.write_bytes(Bytes::from_array(tt.gzip)) is (_, None)
     let err = r1.reset(inp)
     match err {
       Some(e) => raise e
@@ -361,7 +361,7 @@ test "decompressor by resetting the reader" {
       _ => ()
     }
     if tt.name != r2.header.name {
-      guard r2.close() is None
+      guard! r2.close() is None
       assert_eq(tt.name, r1.header.name)
     }
     b.reset()

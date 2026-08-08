@@ -220,7 +220,7 @@ test "internal functions for converting to and from Latin-1" {
 
   //
   let r = @io.Buffer::new()
-  guard r.write_bytes(Bytes::from_array(latin1)) is (_, None)
+  guard! r.write_bytes(Bytes::from_array(latin1)) is (_, None)
 
   //
 
@@ -235,7 +235,7 @@ test "internal functions for converting to and from Latin-1" {
     err: None,
     multistream: false,
   }
-  guard z.read_string() is (s, None)
+  guard! z.read_string() is (s, None)
   assert_eq(s, utf16)
   let w = @io.Buffer::new()
   let c : Writer = {
@@ -250,7 +250,7 @@ test "internal functions for converting to and from Latin-1" {
     size: 0U,
     err: None,
   }
-  guard c.write_string(utf16) is None
+  guard! c.write_string(utf16) is None
   let s = w.to_bytes().to_array()
   @debug.assert_eq(s, latin1)
 }
