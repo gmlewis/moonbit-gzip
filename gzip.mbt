@@ -238,7 +238,7 @@ pub fn Writer::flush(self : Writer) -> IOError? {
     return None
   }
   if !self.wrote_header {
-    let (_, err) = self.write(Slice::new([b'\x00']))
+    let (_, err) = @io.Writer::write(self, Slice::new([b'\x00']))
     guard err is None else { return err }
   }
   // The simplified flate compressor has no flush method.
@@ -257,7 +257,7 @@ pub impl @io.Closer for Writer with fn close(self) {
   }
   self.closed = true
   if !self.wrote_header {
-    let (_, err) = self.write(Slice::new([]))
+    let (_, err) = @io.Writer::write(self, Slice::new([]))
     guard err is None else { return err }
   }
   self.err = @io.Closer::close(self.compressor)
