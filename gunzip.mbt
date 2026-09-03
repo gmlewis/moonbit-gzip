@@ -77,7 +77,7 @@ pub(all) struct Header {
 
 ///|
 pub fn Header::new() -> Header {
-  { comment: "", extra: [], mod_time: None, name: "", os: b'\xff' }
+  { comment: "", extra: [], mod_time: None, name: "", os: b'\xff', }
 }
 
 ///|
