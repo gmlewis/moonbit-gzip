@@ -196,7 +196,7 @@ fn Reader::read_string(self : Reader) -> (String, IOError?) {
     if self.buf[i] == 0 {
       // Strings are ISO 8859-1, Latin-1 (RFC 1952, section 2.3.1).
       if need_conv {
-        let s = Array::new(capacity=i)
+        let s = Array(capacity=i)
         for v in self.buf[:i] {
           s.push(Int::unsafe_to_char(v.to_int()))
         }

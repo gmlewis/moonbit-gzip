@@ -1,13 +1,13 @@
 name = "gmlewis/gzip"
 
-version = "0.34.13"
+version = "0.34.14"
 
 import {
   "gmlewis/base64@0.16.12",
   "gmlewis/crc32@0.8.18",
-  "gmlewis/flate@0.36.13",
-  "gmlewis/io@0.23.16",
-  "moonbitlang/x@0.5.1",
+  "gmlewis/flate@0.36.14",
+  "gmlewis/io@0.23.17",
+  "moonbitlang/x@0.5.5",
 }
 
 readme = "README.md"
