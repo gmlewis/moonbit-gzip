@@ -10,6 +10,22 @@
 ///|
 pub(all) struct CompressionLevel(Int) derive(Compare, Eq)
 
+///|
+pub extend CompressionLevel with Compare::{compare}
+
+///|
+#deprecated("Use the `<`, `<=`, `>=` and `>` operators instead", skip_current_package=true)
+#doc(hidden)
+pub extend CompressionLevel with Compare::{op_lt, op_le, op_ge, op_gt}
+
+///|
+pub extend CompressionLevel with Eq::{equal}
+
+///|
+#deprecated("Use `!=` instead", skip_current_package=true)
+#doc(hidden)
+pub extend CompressionLevel with Eq::{not_equal}
+
 // pub let huffman_only : CompressionLevel = -2
 
 // pub let default_compression : CompressionLevel = -1
@@ -138,6 +154,9 @@ fn Writer::write_string(self : Writer, s : String) -> IOError? {
 }
 
 ///|
+pub extend Writer with @io.Writer::{write}
+
+///|
 // write writes a compressed form of p to the underlying [io.Writer]. The
 // compressed bytes are not necessarily flushed until the [Writer] is closed.
 pub impl @io.Writer for Writer with fn write(self, p) {
@@ -245,6 +264,9 @@ pub fn Writer::flush(self : Writer) -> IOError? {
   // self.err = self.compressor.flush()
   None
 }
+
+///|
+pub extend Writer with @io.Closer::{close}
 
 ///|
 /// close closes the [Writer] by flushing any unwritten data to the underlying

@@ -22,6 +22,8 @@ pub let ioeof : @io.IOError
 
 // Types and methods
 pub(all) struct CompressionLevel(Int) derive(Compare, Eq)
+pub fn CompressionLevel::compare(Self, Self) -> Int
+pub fn CompressionLevel::equal(Self, Self) -> Bool
 
 pub(all) struct Header {
   mut comment : String
@@ -36,8 +38,10 @@ pub(all) struct Reader {
   mut header : Header
   // private fields
 }
+pub fn Reader::close(Self) -> @io.IOError?
 pub fn Reader::multistream(Self, Bool) -> Unit
 pub fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
+pub fn Reader::read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
 pub fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
 pub impl @io.Closer for Reader
 pub impl @io.ReadCloser for Reader
@@ -55,8 +59,10 @@ pub(all) struct Writer {
   mut size : UInt
   mut err : @io.IOError?
 }
+pub fn Writer::close(Self) -> @io.IOError?
 pub fn Writer::flush(Self) -> @io.IOError?
 pub fn Writer::new(&@io.Writer) -> Self
+pub fn Writer::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
 pub impl @io.Closer for Writer
 pub impl @io.Writer for Writer
 

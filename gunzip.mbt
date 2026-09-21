@@ -367,6 +367,9 @@ fn le_uint32(b : ArrayView[Byte]) -> UInt {
 }
 
 ///|
+pub extend Reader with @io.Reader::{read}
+
+///|
 /// Read implements [IOReadCloser], reading uncompressed bytes from its underlying [Reader].
 pub impl @io.Reader for Reader with fn read(self, p) {
   if !(self.err is None) {
@@ -424,6 +427,9 @@ pub impl @io.Reader for Reader with fn read(self, p) {
   //
   return (n, None)
 }
+
+///|
+pub extend Reader with @io.Closer::{close}
 
 ///|
 /// Close closes the [Reader]. It does not close the underlying [io.Reader].
