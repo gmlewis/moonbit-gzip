@@ -8,7 +8,7 @@
 // license that can be found in the LICENSE file.
 
 ///|
-pub(all) struct CompressionLevel(Int) derive(Compare, Eq)
+pub(all) struct CompressionLevel(Int32) derive(Compare, Eq)
 
 ///|
 pub extend CompressionLevel with Compare::{compare}
@@ -47,8 +47,8 @@ pub(all) struct Writer {
   mut closed : Bool
   mut buf : Array[Byte] // [10]byte
   mut compressor : &@io.WriteCloser
-  mut digest : UInt // CRC-32, IEEE polynomial (section 8)
-  mut size : UInt // Uncompressed size (section 2.3.1)
+  mut digest : UInt32 // CRC-32, IEEE polynomial (section 8)
+  mut size : UInt32 // Uncompressed size (section 2.3.1)
   mut err : IOError?
 }
 
@@ -99,13 +99,13 @@ fn Writer::write_bytes(self : Writer, b : Slice[Byte]) -> IOError? {
 }
 
 ///|
-fn le_put_uint16(b : Array[Byte], offset : Int, value : UInt) -> Unit {
+fn le_put_uint16(b : Array[Byte], offset : Int32, value : UInt32) -> Unit {
   b[offset] = (value & 0xff).to_byte()
   b[offset + 1] = ((value >> 8) & 0xff).to_byte()
 }
 
 ///|
-fn le_put_uint32(b : Array[Byte], offset : Int, value : UInt) -> Unit {
+fn le_put_uint32(b : Array[Byte], offset : Int32, value : UInt32) -> Unit {
   b[offset] = (value & 0xff).to_byte()
   b[offset + 1] = ((value >> 8) & 0xff).to_byte()
   b[offset + 2] = ((value >> 16) & 0xff).to_byte()

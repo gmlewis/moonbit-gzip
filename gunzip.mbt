@@ -100,7 +100,7 @@ pub(all) struct Reader {
   priv mut r : &@flate.Reader
   priv mut decompressor : &@io.ReadCloser
   priv mut digest : @crc32.Digest // CRC-32, IEEE polynomial (section 8)
-  priv mut size : UInt // Uncompressed size (section 2.3.1)
+  priv mut size : UInt32 // Uncompressed size (section 2.3.1)
   priv mut buf : Array[Byte] // [512]byte
   priv mut err : IOError?
   priv mut multistream : Bool
@@ -198,7 +198,7 @@ fn Reader::read_string(self : Reader) -> (String, IOError?) {
       if need_conv {
         let s = Array(capacity=i)
         for v in self.buf[:i] {
-          s.push(Int::unsafe_to_char(v.to_int()))
+          s.push(Int32::unsafe_to_char(v.to_int()))
         }
         return (String::from_array(s), None)
       }
@@ -354,12 +354,12 @@ fn Reader::read_header(self : Reader) -> (Header, IOError?) {
 }
 
 ///|
-fn le_uint16(b : ArrayView[Byte]) -> UInt {
+fn le_uint16(b : ArrayView[Byte]) -> UInt32 {
   b[0].to_uint() | (b[1].to_uint() << 8)
 }
 
 ///|
-fn le_uint32(b : ArrayView[Byte]) -> UInt {
+fn le_uint32(b : ArrayView[Byte]) -> UInt32 {
   b[0].to_uint() |
   (b[1].to_uint() << 8) |
   (b[2].to_uint() << 16) |

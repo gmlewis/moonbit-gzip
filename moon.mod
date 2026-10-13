@@ -1,12 +1,12 @@
 name = "gmlewis/gzip"
 
-version = "0.34.15"
+version = "0.34.16"
 
 import {
-  "gmlewis/base64@0.16.13",
-  "gmlewis/crc32@0.9.0",
-  "gmlewis/flate@0.36.15",
-  "gmlewis/io@0.23.18",
+  "gmlewis/base64@0.16.14",
+  "gmlewis/crc32@0.9.1",
+  "gmlewis/flate@0.36.16",
+  "gmlewis/io@0.23.19",
   "moonbitlang/x@0.5.5",
 }
 
