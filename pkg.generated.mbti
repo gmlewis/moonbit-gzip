@@ -21,8 +21,8 @@ pub let ioeof : @io.IOError
 // Errors
 
 // Types and methods
-pub(all) struct CompressionLevel(Int) derive(Compare, Eq)
-pub fn CompressionLevel::compare(Self, Self) -> Int
+pub(all) struct CompressionLevel(Int32) derive(Compare, Eq)
+pub fn CompressionLevel::compare(Self, Self) -> Int32
 pub fn CompressionLevel::equal(Self, Self) -> Bool
 
 pub(all) struct Header {
@@ -41,7 +41,7 @@ pub(all) struct Reader {
 pub fn Reader::close(Self) -> @io.IOError?
 pub fn Reader::multistream(Self, Bool) -> Unit
 pub fn Reader::new(&@flate.Reader) -> (Self, @io.IOError?)
-pub fn Reader::read(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+pub fn Reader::read(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
 pub fn Reader::reset(Self, &@flate.Reader) -> @io.IOError?
 pub impl @io.Closer for Reader
 pub impl @io.ReadCloser for Reader
@@ -55,14 +55,14 @@ pub(all) struct Writer {
   mut closed : Bool
   mut buf : Array[Byte]
   mut compressor : &@io.WriteCloser
-  mut digest : UInt
-  mut size : UInt
+  mut digest : UInt32
+  mut size : UInt32
   mut err : @io.IOError?
 }
 pub fn Writer::close(Self) -> @io.IOError?
 pub fn Writer::flush(Self) -> @io.IOError?
 pub fn Writer::new(&@io.Writer) -> Self
-pub fn Writer::write(Self, @io.Slice[Byte]) -> (Int, @io.IOError?)
+pub fn Writer::write(Self, @io.Slice[Byte]) -> (Int32, @io.IOError?)
 pub impl @io.Closer for Writer
 pub impl @io.Writer for Writer
 
