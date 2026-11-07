@@ -8,7 +8,8 @@
 // license that can be found in the LICENSE file.
 
 ///|
-pub(all) struct CompressionLevel(Int32) derive(Compare, Eq)
+#derive(Compare, Eq)
+pub(all) struct CompressionLevel(Int32)
 
 ///|
 pub extend CompressionLevel with Compare::{compare}

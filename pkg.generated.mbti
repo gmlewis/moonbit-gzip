@@ -21,7 +21,8 @@ pub let ioeof : @io.IOError
 // Errors
 
 // Types and methods
-pub(all) struct CompressionLevel(Int32) derive(Compare, Eq)
+#derive(Compare, Eq)
+pub(all) struct CompressionLevel(Int32)
 pub fn CompressionLevel::compare(Self, Self) -> Int32
 pub fn CompressionLevel::equal(Self, Self) -> Bool
 
